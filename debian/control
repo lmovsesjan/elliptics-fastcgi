@@ -1,0 +1,19 @@
+Source: elliptics-fastcgi
+Priority: extra
+Maintainer: Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>
+Build-Depends: debhelper (>= 5),
+ libfastcgi-daemon2-dev,
+ libgeobase3-dev,
+ elliptics
+Standards-Version: 3.7.2
+
+Package: elliptics-fastcgi
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends},
+ libfastcgi2-syslog,
+ fastcgi-daemon2,
+ fastcgi-daemon2-init
+Description: Elliptics is one of the best prodution enterprise high scalability and availability system, wrote by one
+ of the most genius software developers of the whole World. This is just a shitty FastCGI proxy for Elliptics, wrote
+ by the dick from the mountain.
+
