@@ -41,15 +41,15 @@
 namespace elliptics {
 
 enum dnet_common_embed_types {
-	DNET_FCGI_EMBED_DATA            = 1,
+	DNET_FCGI_EMBED_DATA	    = 1,
 	DNET_FCGI_EMBED_TIMESTAMP,
 };
 
 struct dnet_common_embed {
-	uint64_t                size;
-	uint32_t                type;
-	uint32_t                flags;
-	uint8_t                 data[0];
+	uint64_t		size;
+	uint32_t		type;
+	uint32_t		flags;
+	uint8_t		 data[0];
 };
 
 static inline void
@@ -166,17 +166,25 @@ EllipticsProxy::secret(fastcgi::Request *request) const {
 std::string
 EllipticsProxy::md5(const std::string &source) {
 	MD5_CTX md5handler;
-	unsigned char md5digest[MD5_DIGEST_LENGTH];
+	unsigned char md5buffer[16];
+
 	MD5_Init(&md5handler);
-	MD5_Update(&md5handler, source.c_str(), source.length());
-	MD5_Final(md5digest, &md5handler);
-	std::string hash;
-	for (std::size_t i = 0; i < MD5_DIGEST_LENGTH; ++i) {
-		char hex[3];
-		snprintf(hex, sizeof (hex), "%02x", md5digest[i]);
-		hash.append(hex);
+	MD5_Update(&md5handler, (unsigned char *)source.c_str(), source.length());
+	MD5_Final(md5buffer, &md5handler);
+
+	char alpha[16] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+	unsigned char c;
+	std::string md5digest;
+	md5digest.reserve(32);
+
+	for (int i = 0; i < 16; ++i) {
+		c = (md5buffer[i] & 0xf0) >> 4;
+		md5digest.push_back(alpha[c]);
+		c = (md5buffer[i] & 0xf);
+		md5digest.push_back(alpha[c]);
 	}
-	return hash;
+
+	return md5digest;
 }
 
 void
@@ -670,22 +678,22 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		std::string lookup = elliptics_node_->lookup(filename);
 		const void *data = lookup.data();
 
-                struct dnet_addr *addr = (struct dnet_addr *)data;
-                struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-                struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-                struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+		struct dnet_addr *addr = (struct dnet_addr *)data;
+		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
+		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
+		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
 
-                int port = dnet_server_convert_port((struct sockaddr *)a->addr.addr, a->addr.addr_len);
+		int port = dnet_server_convert_port((struct sockaddr *)a->addr.addr, a->addr.addr_len);
 
 		struct dnet_id eid;
 
 		elliptics_node_->transform(filename, eid);
 
-                char res_id[2 * DNET_ID_SIZE + 1];
-                char hex_dir[2 * DNET_ID_SIZE + 1];
+		char res_id[2 * DNET_ID_SIZE + 1];
+		char hex_dir[2 * DNET_ID_SIZE + 1];
 
-                dnet_dump_id_len_raw(eid.id, DNET_ID_SIZE, res_id);
-                file_backend_get_dir(eid.id, directory_bit_num_, hex_dir);
+		dnet_dump_id_len_raw(eid.id, DNET_ID_SIZE, res_id);
+		file_backend_get_dir(eid.id, directory_bit_num_, hex_dir);
 
 		int err = cmd->status;
 
@@ -715,7 +723,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	catch (const std::exception &e) {
 		log()->error("can not write file %s %s", filename.c_str(), e.what());
 		request->setStatus(400);
-        }
+	}
 	catch (...) {
 		log()->error("can not write file %s", filename.c_str());
 		request->setStatus(400);
@@ -724,10 +732,10 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::deleteHandler(fastcgi::Request *request) {
-        if (elliptics_node_->state_num() < state_num_) {
-                request->setStatus(403);
-                return;
-        }
+	if (elliptics_node_->state_num() < state_num_) {
+		request->setStatus(403);
+		return;
+	}
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/delete/") - 1, std::string::npos);

@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-19) unstable; urgency=low
+
+  * fixed md5
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Thu, 14 Apr 2011 14:39:36 +0400
+
 elliptics-fastcgi (1.0-18) unstable; urgency=low
 
   * fixed deps
