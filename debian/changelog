@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-21) unstable; urgency=low
+
+  * added wait and reconnect timeouts to config
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Mon, 18 Apr 2011 19:25:15 +0400
+
 elliptics-fastcgi (1.0-20) unstable; urgency=low
 
   * added random shuffling in groups list

@@ -294,7 +294,13 @@ EllipticsProxy::onLoad() {
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
 	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_));
+	struct dnet_config dnet_conf;
+	memset(&dnet_conf, 0, sizeof (dnet_conf));
+
+	dnet_conf.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
+	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
+
+	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
