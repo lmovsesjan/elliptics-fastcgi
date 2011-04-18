@@ -414,6 +414,11 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
+	std::vector<int>::iterator it = groups_.begin();
+	++it;
+	std::random_shuffle(it, groups_.end());
+	elliptics_node_->add_groups(groups_);
+
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
 
@@ -430,6 +435,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
 
 		char hbuf[NI_MAXHOST];
+		memset(hbuf, 0, NI_MAXHOST);
 
 		if (getnameinfo((const sockaddr*)&a->addr, a->addr.addr_len, hbuf, sizeof (hbuf), NULL, 0, 0) != 0) {
 			throw std::runtime_error("can not make dns lookup");
@@ -490,6 +496,11 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
+	std::vector<int>::iterator git = groups_.begin();
+	++git;
+	std::random_shuffle(git, groups_.end());
+	elliptics_node_->add_groups(groups_);
+
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
 
