@@ -683,7 +683,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		struct timespec ts;
 		memset(&ts, 0, sizeof (ts));
-		result = elliptics_node_->write_metadata(id, content, groups_);
+		result = elliptics_node_->write_metadata(id, content, groups_, ts);
 		if (result == 0) {
 			log()->error("can not write metadata for file %s", filename.c_str());
 			request->setStatus(400);
