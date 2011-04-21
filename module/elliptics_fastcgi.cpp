@@ -668,12 +668,28 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 			content.assign(copy, sizeof (copy));
 		}
-		int result = elliptics_node_->write_data_wait(filename, content);
+
+		struct dnet_id id;
+		memset(&id, 0, sizeof (id));
+
+		elliptics_node_->transform(filename, id);
+
+		int result = elliptics_node_->write_data_wait(id, content);
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
 			request->setStatus(400);
 			return;
 		}
+
+		struct timespec ts;
+		memset(&ts, 0, sizeof (ts));
+		result = elliptics_node_->write_data_wait(id, content, groups_);
+		if (result == 0) {
+			log()->error("can not write metadata for file %s", filename.c_str());
+			request->setStatus(400);
+			return;
+		}
+
 		request->setStatus(200);
 
 		struct dnet_id id, row;
