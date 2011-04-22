@@ -9,7 +9,7 @@ Standards-Version: 3.7.2
 
 Package: elliptics-fastcgi
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends},
+Depends: ${shlibs:Depends},
  libfastcgi2-syslog,
  fastcgi-daemon2,
  fastcgi-daemon2-init

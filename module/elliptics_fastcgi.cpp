@@ -299,6 +299,7 @@ EllipticsProxy::onLoad() {
 
 	dnet_conf.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
 	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
+	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
 	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
 
