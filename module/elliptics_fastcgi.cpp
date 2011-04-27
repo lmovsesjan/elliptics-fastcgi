@@ -566,10 +566,14 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			result = result.substr(offset, std::string::npos);
 		}
 
+		char ts_str[128];
+		time_t timestamp = (time_t)(ts);
+		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %z", gmtime(&timestamp));
+
 		request->setStatus(200);
 		request->setContentType(content_type);
 		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
-		request->setHeader("Last-Modified", boost::lexical_cast<std::string>(ts));
+		request->setHeader("Last-Modified", ts_str);
 		request->write(result.c_str(), result.size());
 	}
 	catch (const std::exception &e) {
