@@ -685,14 +685,26 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		elliptics_node_->transform(filename, id);
 
-		int result = elliptics_node_->write_data_wait(id, content);
-		if (result == 0) {
+		std::size_t written = 0;
+		for (std::size_t i = 0; i < groups_.size(); ++i) {
+			id.group_id = groups_[i];
+
+			try {
+				if (elliptics_node_->write_data_wait(id, content) != 0) {
+					++written;
+				}
+			}
+			catch (...) {
+			}
+		}
+
+		if (written == 0) {
 			log()->error("can not write file %s", filename.c_str());
 			request->setStatus(400);
 			return;
 		}
-		if (result < success_copies_num_) {
-			log()->error("can not write file %d copies instead %d", result, success_copies_num_);
+		if (written < success_copies_num_) {
+			log()->error("can not write file %s %d copies instead %d", filename.c_str(), written, success_copies_num_);
 			request->setStatus(403);
 			return;
 		}
@@ -737,7 +749,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		int err = cmd->status;
 
 		// FIXME write correct addresses
-		std::size_t written = 0;
 		for (std::size_t i = 0; i < groups_.size(); ++i) {
 			std::string addr;
 			try {
@@ -751,10 +762,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				boost::lexical_cast<std::string>(port - base_port_) <<
 				'/' << hex_dir << '/' << res_id << "\" group=\"" << groups_[i] << "\" "
 				"status=\"" << err << "\"/>\n";
-			++written;
 		}
 
-		ostr << "<written>" << result << "</written>\n</post>";
+		ostr << "<written>" << written << "</written>\n</post>";
 
 		std::string response = ostr.str();
 
