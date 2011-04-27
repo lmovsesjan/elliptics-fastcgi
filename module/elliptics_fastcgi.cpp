@@ -568,7 +568,8 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 
 		char ts_str[128];
 		time_t timestamp = (time_t)(ts);
-		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp));
+		struct tm tmp;
+		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp, &tmp));
 
 		request->setStatus(200);
 		request->setContentType(content_type);
