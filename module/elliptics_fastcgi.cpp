@@ -656,18 +656,21 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 	try {
 		std::string content;
-		buffer.toString(content);
 		if (embed) {
 			int size = sizeof (struct dnet_common_embed) * 2 + sizeof (uint64_t) * 2;
 
-			char copy[content.length() + size];
-			strncpy(copy + size, content.c_str(), content.length());
-
-			int err = dnet_common_prepend_data(&ts, content.length(), copy, &size);
+			char header[size];
+			int err = dnet_common_prepend_data(&ts, buffer.size(), header, &size);
 			if (err != 0) {
 				throw std::runtime_error("bad data prepending");
 			}
-			content.assign(copy, sizeof (copy));
+			content.append(header, size);
+		}
+
+		content.reserve(content.size() + buffer.size());
+		for (fastcgi::DataBuffer::SegmentIterator it = buffer.begin(), end = buffer.end(); it != end; ++it) {
+			std::pair<char*, boost::uint64_t> chunk = *it;
+			content.append(chunk.first, chunk.second);
 		}
 
 		struct dnet_id id;
