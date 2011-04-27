@@ -382,6 +382,8 @@ EllipticsProxy::onLoad() {
 		}
 	}
 
+	success_copies_num_ = config->asInt(path + "/dnet/success-copies-num", groups_.size());
+
 	std::vector<std::string> typemap;
 	config->subKeys(path + "/dnet/typemap/type", typemap);
 
@@ -689,6 +691,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			request->setStatus(400);
 			return;
 		}
+		if (result < success_copies_num_) {
+			log()->error("can not write file %d copies instead %d", result, success_copies_num_);
+			request->setStatus(403);
+			return;
+		}
 
 		request->setStatus(200);
 
@@ -729,6 +736,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		int err = cmd->status;
 
+		// FIXME write correct addresses
 		std::size_t written = 0;
 		for (std::size_t i = 0; i < groups_.size(); ++i) {
 			std::string addr;
@@ -746,7 +754,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			++written;
 		}
 
-		ostr << "<written>" << written << "</written>\n</post>";
+		ostr << "<written>" << result << "</written>\n</post>";
 
 		std::string response = ostr.str();
 

@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-30) unstable; urgency=low
+
+  * added copies number checking
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Wed, 27 Apr 2011 17:45:50 +0400
+
 elliptics-fastcgi (1.0-29) unstable; urgency=low
 
   * gmtime_r instead gmtime
