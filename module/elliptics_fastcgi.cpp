@@ -750,16 +750,17 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			++written;
 		}
 
-		if (written < success_copies_num_) {
-			log()->error("can not write file %s %d copies instead %d", filename.c_str(), written, success_copies_num_);
-			request->setStatus(403);
-			return;
-		}
-
 		ostr << "<written>" << written << "</written>\n</post>";
 
 		std::string response = ostr.str();
 
+		if (written < success_copies_num_) {
+			log()->error("can not write file %s %d copies instead %d", filename.c_str(), written, success_copies_num_);
+			request->setStatus(403);
+		}
+		else {
+			request->setStatus(200);
+		}
 		request->write(response.c_str(), response.length());
 	}
 	catch (const std::exception &e) {
