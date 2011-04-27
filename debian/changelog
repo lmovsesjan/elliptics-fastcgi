@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-29) unstable; urgency=low
+
+  * gmtime_r instead gmtime
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Wed, 27 Apr 2011 16:28:23 +0400
+
 elliptics-fastcgi (1.0-28) unstable; urgency=low
 
   * fixed Last-Modified header format
