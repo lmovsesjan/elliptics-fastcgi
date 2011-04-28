@@ -424,7 +424,7 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
         std::vector<int> groups_copy = groups_;
-	std::vector<int>::iterator git = groups_copy_.begin();
+	std::vector<int>::iterator git = groups_copy.begin();
 	++git;
 	std::random_shuffle(git, groups_copy.end());
 	elliptics_node_->add_groups(groups_copy);
@@ -507,7 +507,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
 	std::vector<int> groups_copy = groups_;
-	std::vector<int>::iterator git = groups_copy_.begin();
+	std::vector<int>::iterator git = groups_copy.begin();
 	++git;
 	std::random_shuffle(git, groups_copy.end());
 	elliptics_node_->add_groups(groups_copy);
