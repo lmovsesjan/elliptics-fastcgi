@@ -423,10 +423,11 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
-	std::vector<int>::iterator it = groups_.begin();
-	++it;
-	std::random_shuffle(it, groups_.end());
-	elliptics_node_->add_groups(groups_);
+        std::vector<int> groups_copy = groups_;
+	std::vector<int>::iterator git = groups_copy_.begin();
+	++git;
+	std::random_shuffle(git, groups_copy.end());
+	elliptics_node_->add_groups(groups_copy);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
@@ -505,10 +506,11 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
-	std::vector<int>::iterator git = groups_.begin();
+	std::vector<int> groups_copy = groups_;
+	std::vector<int>::iterator git = groups_copy_.begin();
 	++git;
-	std::random_shuffle(git, groups_.end());
-	elliptics_node_->add_groups(groups_);
+	std::random_shuffle(git, groups_copy.end());
+	elliptics_node_->add_groups(groups_copy);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
