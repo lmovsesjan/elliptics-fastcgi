@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-36) unstable; urgency=low
+
+  * fixed stat log
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 03 May 2011 20:11:21 +0400
+
 elliptics-fastcgi (1.0-35) unstable; urgency=low
 
   * fixed stat log
