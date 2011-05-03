@@ -608,6 +608,11 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 	while (size) {
 		struct dnet_addr *addr = (struct dnet_addr *)data;
 		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
+		if (cmd->size != sizeof (struct dnet_attr) + sizeof (struct dnet_stat)) {
+			size -= cmd->size - sizeof (struct dnet_addr) - sizeof (struct dnet_cmd);
+			data = data + cmd->size - sizeof (struct dnet_addr) - sizeof (struct dnet_cmd);
+			continue;
+		}
 		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
 		struct dnet_stat *st = (struct dnet_stat *)(attr + 1);
 
