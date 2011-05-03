@@ -610,7 +610,7 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
 		if (cmd->size != sizeof (struct dnet_attr) + sizeof (struct dnet_stat)) {
 			size -= cmd->size - sizeof (struct dnet_addr) - sizeof (struct dnet_cmd);
-			data = data + cmd->size - sizeof (struct dnet_addr) - sizeof (struct dnet_cmd);
+			data = (char *)((char *)data + cmd->size - sizeof (struct dnet_addr) - sizeof (struct dnet_cmd));
 			continue;
 		}
 		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
