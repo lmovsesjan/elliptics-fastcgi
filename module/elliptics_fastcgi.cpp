@@ -193,7 +193,7 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 	try {
 		std::string handler;
 		if (request->getQueryString().length() != 0) {
-			if (request->hasArg("stat")) {
+			if (request->hasArg("stat") || request->hasArg("ping")) {
 				handler = "stat";
 			}
 			else if (request->hasArg("stat_log")) {

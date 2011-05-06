@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-37) unstable; urgency=low
+
+  * added ping alias
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Fri, 06 May 2011 17:52:10 +0400
+
 elliptics-fastcgi (1.0-36) unstable; urgency=low
 
   * fixed stat log
