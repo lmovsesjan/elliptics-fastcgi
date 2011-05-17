@@ -490,7 +490,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 #ifdef HAVE_GEOBASE
 		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
 
-		if (geoid != -1) {
+		if (NULL != regional_module_ && geoid != -1) {
 			std::vector<std::string> hosts = regional_module_->getHosts(geoid);
 			if (hosts.size() != 0) {
 				char f_str[2];
