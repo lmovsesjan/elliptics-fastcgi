@@ -29,6 +29,7 @@
 
 #ifdef HAVE_GEOBASE
 #include <geobase3/lookup.hpp>
+#include <fastcgi-elliptics/regional_module.hpp>
 #endif
 
 #include <boost/tokenizer.hpp>
@@ -91,6 +92,7 @@ private:
 	boost::mutex                           mutex_;
 	std::string                            filename_;
 	time_t                                 last_modified_;
+	RegionalModule*                        regional_module_;
 #endif
 	boost::shared_ptr<elliptics_log_file>  elliptics_log_;
 	boost::shared_ptr<elliptics_node>      elliptics_node_;

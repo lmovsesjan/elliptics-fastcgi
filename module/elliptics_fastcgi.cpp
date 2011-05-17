@@ -272,6 +272,8 @@ EllipticsProxy::onLoad() {
 	boost::uint32_t timeout = config->asInt(path + "/geobase/timeout", 3600);
 	boost::function<void()> func = boost::bind(&EllipticsProxy::refresh, this);
 	refresher_.reset(new Refresher(func, timeout));
+
+	regional_module_ = context()->findComponent<RegionalModule>(config->asString(path + "/regional-module", "regional-module"));
 #endif
 
 	state_num_ = config->asInt(path + "/dnet/die-limit");
@@ -487,6 +489,24 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
 #ifdef HAVE_GEOBASE
 		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
+
+		if (geoid != -1) {
+			std::vector<std::string> hosts = regional_module_->getHosts(geoid);
+			if (hosts.size() != 0) {
+				char f_str[2];
+				strncpy(f_str, id + sizeof (id) - 3, sizeof (f_str));
+				unsigned int f;
+				sscanf(f_str, "%x", &f);
+				size_t n = f % hosts.size();
+				std::swap(hosts[n], hosts[0]);
+
+				for (std::size_t i = 0; i < std::min(hosts.size(), (size_t)2); ++i) {
+					std::string index = boost::lexical_cast<std::string>(i);
+					result += "<regional-host-" + index +
+						">" + hosts[i] + "</regional-host-" + index + ">";
+				}
+			}
+		}
 #endif
 		result += "<s>" + sign + "</s></download-info>";
 

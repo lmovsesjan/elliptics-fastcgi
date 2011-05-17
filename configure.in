@@ -51,6 +51,8 @@ AC_ARG_ENABLE(geobase,
 	]
 )
 
+AM_CONDITIONAL(HAVE_GEOBASE, [test "f$ac_geobase" = "fyes"])
+
 if test "f$ac_geobase" = "fyes"
 	then
 	AC_CHECK_LIB([geobase3], [main])

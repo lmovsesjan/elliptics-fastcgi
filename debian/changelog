@@ -1,3 +1,15 @@
+elliptics-fastcgi (1.0-39) unstable; urgency=low
+
+  * added optional regional module
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 17 May 2011 17:44:09 +0400
+
+elliptics-fastcgi (1.0-38) unstable; urgency=low
+
+  * added ping alias
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Fri, 13 May 2011 14:50:23 +0400
+
 elliptics-fastcgi (1.0-37) unstable; urgency=low
 
   * added ping alias
