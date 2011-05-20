@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-42) unstable; urgency=low
+
+  * fixed download info handler
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Fri, 20 May 2011 16:38:10 +0400
+
 elliptics-fastcgi (1.0-41) unstable; urgency=low
 
   * version up

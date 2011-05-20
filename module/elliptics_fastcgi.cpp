@@ -104,7 +104,8 @@ dnet_common_prepend_data(struct timespec *ts, uint64_t size, char *buf, int *buf
 
 EllipticsProxy::EllipticsProxy(fastcgi::ComponentContext *context) :
 	fastcgi::Component(context),
-	logger_(NULL) {
+	logger_(NULL),
+	regional_module_(NULL) {
 #ifdef HAVE_GEOBASE
 	last_modified_ = 0;
 #endif
@@ -484,12 +485,9 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		char tsstr[32];
 		snprintf(tsstr, sizeof (tsstr), "%lx", s.second);
 
-		result += "<download-info><host>" + std::string(hbuf) + "</host>"
-			"<path>/" + boost::lexical_cast<std::string>(port - base_port_) +
-			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
-#ifdef HAVE_GEOBASE
-		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
+		result += "<download-info><host>" + std::string(hbuf) + "</host>";
 
+#ifdef HAVE_GEOBASE
 		if (NULL != regional_module_ && geoid != -1) {
 			std::vector<std::string> hosts = regional_module_->getHosts(geoid);
 			if (hosts.size() != 0) {
@@ -502,11 +500,17 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 				for (std::size_t i = 0; i < std::min(hosts.size(), (size_t)2); ++i) {
 					std::string index = boost::lexical_cast<std::string>(i);
-					result += "<regional-host-" + index +
-						">" + hosts[i] + "</regional-host-" + index + ">";
-				}
-			}
-		}
+					result += "<regional-host>" + std::string(hbuf) + '.' + hosts[i] + "</regional-host>";
+                                }
+                        }
+                }
+
+#endif
+
+		result += "<path>/" + boost::lexical_cast<std::string>(port - base_port_) +
+			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
+#ifdef HAVE_GEOBASE
+		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
 #endif
 		result += "<s>" + sign + "</s></download-info>";
 
