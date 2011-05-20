@@ -485,7 +485,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		char tsstr[32];
 		snprintf(tsstr, sizeof (tsstr), "%lx", s.second);
 
-		result += "<download-info><host>" + std::string(hbuf) + "</host>";
+		result += "<download-info>";
 
 #ifdef HAVE_GEOBASE
 		if (NULL != regional_module_ && geoid != -1) {
@@ -507,7 +507,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 #endif
 
-		result += "<path>/" + boost::lexical_cast<std::string>(port - base_port_) +
+		result += "<host>" + std::string(hbuf) + "</host><path>/" + boost::lexical_cast<std::string>(port - base_port_) +
 			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
 #ifdef HAVE_GEOBASE
 		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
