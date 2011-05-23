@@ -774,9 +774,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 
 			ostr << "<complete addr=\"" << addr << "\" path=\"/" <<
-				boost::lexical_cast<std::string>(port - base_port_) <<
-				'/' << hex_dir << '/' << res_id << "\" group=\"" << groups_[i] << "\" "
-				"status=\"" << err << "\"/>\n";
+				port - base_port_ << '/' << hex_dir << '/' << res_id
+				<< "\" group=\"" << groups_[i] << "\" status=\"" << err << "\"/>\n";
 
 			++written;
 		}

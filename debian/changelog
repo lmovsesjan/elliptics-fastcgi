@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-44) unstable; urgency=low
+
+  * fixed upload handler
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Mon, 23 May 2011 15:10:56 +0400
+
 elliptics-fastcgi (1.0-43) unstable; urgency=low
 
   * fixed download info
