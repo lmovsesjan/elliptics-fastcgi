@@ -724,6 +724,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
+		elliptics_node_->write_metadata(id, filename, groups_, ts);
+
 		request->setStatus(200);
 
 		struct dnet_id row;
