@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-46) unstable; urgency=low
+
+  * rebuild with new elliptics version
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Fri, 27 May 2011 16:55:05 +0400
+
 elliptics-fastcgi (1.0-45) unstable; urgency=low
 
   * fixed upload handler
