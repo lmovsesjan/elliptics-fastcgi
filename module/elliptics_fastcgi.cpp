@@ -400,6 +400,8 @@ EllipticsProxy::onLoad() {
 		typemap_[extention] = type;
 	}
 
+	expires_ = config->asInt(path + "/dnet/expires-time", 0);
+
 	registerHandler("ping", &EllipticsProxy::pingHandler);
 	registerHandler("download-info", &EllipticsProxy::downloadInfoHandler);
 	registerHandler("get", &EllipticsProxy::getHandler);
@@ -599,10 +601,15 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		struct tm tmp;
 		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp, &tmp));
 
+		char expires_str[128];
+		timestamp = time(NULL) + expires_;
+		strftime(expires_str, sizeof (expires_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp, &tmp));
+
 		request->setStatus(200);
 		request->setContentType(content_type);
 		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
 		request->setHeader("Last-Modified", ts_str);
+		request->setHeader("Expires", expires_str);
 		request->write(result.c_str(), result.size());
 	}
 	catch (const std::exception &e) {

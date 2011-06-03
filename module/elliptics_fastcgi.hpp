@@ -113,6 +113,7 @@ private:
 	time_t                                 cookie_expires_;
 	std::set<std::string>                  deny_list_;
 	std::set<std::string>                  allow_list_;
+	time_t                                 expires_;
 
 };
 
