@@ -606,6 +606,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			timestamp = time(NULL) + expires_;
 			strftime(expires_str, sizeof (expires_str), "%a, %d %b %Y %T %Z", gmtime_r(&timestamp, &tmp));
 			request->setHeader("Expires", expires_str);
+			request->setHeader("Cache-Control", "max-age=" + boost::lexical_cast<stdL::string>(expires_));
 		}
 
 		request->setStatus(200);
