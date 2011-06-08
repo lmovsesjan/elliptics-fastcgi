@@ -599,7 +599,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		char ts_str[128];
 		time_t timestamp = (time_t)(ts);
 		struct tm tmp;
-		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp, &tmp));
+		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %Z", gmtime_r(&timestamp, &tmp));
 
 		if (expires_ != 0) {
 			char expires_str[128];
