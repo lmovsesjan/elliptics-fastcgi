@@ -604,7 +604,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		if (expires_ != 0) {
 			char expires_str[128];
 			timestamp = time(NULL) + expires_;
-			strftime(expires_str, sizeof (expires_str), "%a, %d %b %Y %T %z", gmtime_r(&timestamp, &tmp));
+			strftime(expires_str, sizeof (expires_str), "%a, %d %b %Y %T %Z", gmtime_r(&timestamp, &tmp));
 			request->setHeader("Expires", expires_str);
 		}
 
