@@ -601,6 +601,13 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		struct tm tmp;
 		strftime(ts_str, sizeof (ts_str), "%a, %d %b %Y %T %Z", gmtime_r(&timestamp, &tmp));
 
+		if (request->hasHeader("If-Modified-Since")) {
+			if (request->getHeader("If-Modified-Since") == ts_str) {
+				request->setStatus(304);
+				return;
+			}
+		}
+
 		if (expires_ != 0) {
 			char expires_str[128];
 			timestamp = time(NULL) + expires_;
