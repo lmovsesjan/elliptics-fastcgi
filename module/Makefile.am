@@ -3,7 +3,7 @@ pkglibdir = $(libdir)/fastcgi2/
 pkglib_LTLIBRARIES = elliptics-fastcgi.la
 
 elliptics_fastcgi_la_SOURCES = elliptics_fastcgi.cpp refresher.cpp
-elliptics_fastcgi_la_LDFLAGS = -module @VERSION_INFO@ @FASTCGI_LIBS@
+elliptics_fastcgi_la_LDFLAGS = -module @VERSION_INFO@
 
 if HAVE_GEOBASE
 elliptics_fastcgi_la_LDFLAGS += /usr/lib/fastcgi2/elliptics-regional-module.la
