@@ -104,10 +104,12 @@ dnet_common_prepend_data(struct timespec *ts, uint64_t size, char *buf, int *buf
 
 EllipticsProxy::EllipticsProxy(fastcgi::ComponentContext *context) :
 	fastcgi::Component(context),
-	logger_(NULL),
-	regional_module_(NULL) {
+	logger_(NULL)
 #ifdef HAVE_GEOBASE
+	, regional_module_(NULL) {
 	last_modified_ = 0;
+#else
+	{
 #endif
 }
 
