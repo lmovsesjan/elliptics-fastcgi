@@ -25,18 +25,7 @@ CPPFLAGS="$CPPFLAGS $yplatform_CFLAGS"
 
 AX_BOOST_THREAD
 
-ac_have_fastcgi="yes"
-
-AC_CHECK_HEADER([fastcgi2/config.h], [], [ac_have_fastcgi="no"])
-AC_CHECK_HEADER([fastcgi2/handler.h], [], [ac_have_fastcgi="no"])
-AC_CHECK_HEADER([fastcgi2/request.h], [], [ac_have_fastcgi="no"])
-
-if test "f$ac_have_fastcgi" != "fyes"; then
-        AC_MSG_ERROR([libfastcgi2-daemon not found])
-else
-        FASTCGI_LIBS="-lfastcgi-daemon2"
-        AC_SUBST(FASTCGI_LIBS)
-fi
+AC_CHECK_FASTCGIDAEMON
 
 AC_CHECK_LIB([elliptics_cpp], [main])
 AC_CHECK_LIB([crypto], [main])
