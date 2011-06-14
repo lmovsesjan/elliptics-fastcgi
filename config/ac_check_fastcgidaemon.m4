@@ -20,9 +20,6 @@ saved_LIBS="$LIBS"
 LIBS="$FASTCGIDAEMON_LIBS $LIBS"
 CFLAGS="$FASTCGIDAEMON_CFLAGS $CFLAGS"
 
-echo $LIBS
-echo $CFLAGS
-
 AC_TRY_LINK([#include <fastcgi2/cookie.h>],
 	[fastcgi::Cookie cookie("test", "test");],
 	[
