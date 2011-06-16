@@ -259,7 +259,7 @@ EllipticsProxy::onLoad() {
 	}
 
 #ifdef HAVE_GEOBASE
-	filename_ = config->asString(path + "/geobase/path");
+	filename_ = config->asString(path + "/geobase/path", "/var/cache/geobase/geodata3.bin");
 
 	struct stat st;
 	int result = stat(filename_.c_str(), &st);
