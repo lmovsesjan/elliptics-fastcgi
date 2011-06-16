@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-54) unstable; urgency=low
+
+  * added custom groups on read/write
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Thu, 16 Jun 2011 12:44:03 +0400
+
 elliptics-fastcgi (1.0-53) unstable; urgency=low
 
   * added if-modified-since parsing
