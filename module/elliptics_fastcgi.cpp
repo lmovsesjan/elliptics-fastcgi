@@ -558,35 +558,11 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
-	if (request->hasArg("groups")) {
-		Separator sep(":");
-		Tokenizer tok(request->getArg("groups"), sep);
-
-		std::vector<int> groups;
-		for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
-			try {
-				int group_id = boost::lexical_cast<int>(*it);
-
-				if (group_id <= 0) {
-					throw fastcgi::HttpException(403);
-				}
-
-				groups.push_back(group_id);
-			}
-			catch (...) {
-				throw fastcgi::HttpException(403);
-			}
-		}
-
-		elliptics_node_->add_groups(groups);
-	}
-	else {
-		std::vector<int> groups = groups_;
-		std::vector<int>::iterator git = groups.begin();
-		++git;
-		std::random_shuffle(git, groups.end());
-		elliptics_node_->add_groups(groups);
-	}
+	std::vector<int> groups_copy = groups_;
+	std::vector<int>::iterator git = groups_copy.begin();
+	++git;
+	std::random_shuffle(git, groups_copy.end());
+	elliptics_node_->add_groups(groups_copy);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
@@ -791,31 +767,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		if (request->hasArg("groups")) {
-			Separator sep(":");
-			Tokenizer tok(request->getArg("groups"), sep);
-
-			std::vector<int> groups;
-			for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
-				try {
-					int group_id = boost::lexical_cast<int>(*it);
-
-					if (group_id <= 0) {
-						throw fastcgi::HttpException(403);
-					}
-
-					groups.push_back(group_id);
-				}
-				catch (...) {
-					throw fastcgi::HttpException(403);
-				}
-			}
-
-			elliptics_node_->write_metadata(id, filename, groups, ts);
-		}
-		else {
-			elliptics_node_->write_metadata(id, filename, groups_, ts);
-		}
+		elliptics_node_->write_metadata(id, filename, groups_, ts);
 
 		request->setStatus(200);
 
