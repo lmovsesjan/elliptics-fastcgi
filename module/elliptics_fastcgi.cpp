@@ -759,7 +759,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		elliptics_node_->transform(filename, id);
 
-		int result = elliptics_node_->write_data_wait(id, content);
+		int result = elliptics_node_->write_data_wait(filename, content);
 
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
