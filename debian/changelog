@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-59) unstable; urgency=low
+
+  * using shared pointer
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Fri, 17 Jun 2011 16:34:25 +0400
+
 elliptics-fastcgi (1.0-58) unstable; urgency=low
 
   * fixed thread specific pointer init

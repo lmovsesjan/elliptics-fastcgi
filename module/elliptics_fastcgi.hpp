@@ -78,8 +78,6 @@ private:
 
 	std::pair<std::string, time_t> secret(fastcgi::Request *request) const;
 
-	void initDnetNode();
-
 public:
 	virtual void onLoad();
 	virtual void onUnload();
@@ -97,7 +95,7 @@ private:
 	RegionalModule*                            regional_module_;
 #endif
 	boost::shared_ptr<elliptics_log_file>      elliptics_log_;
-	boost::thread_specific_ptr<elliptics_node> elliptics_node_;
+	boost::shared_ptr<elliptics_node>          elliptics_node_;
 	std::map<std::string, std::string>         typemap_;
 	std::vector<std::string>                   remotes_;
 	std::vector<int>                           groups_;
