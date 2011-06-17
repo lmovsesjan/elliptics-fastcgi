@@ -78,6 +78,8 @@ private:
 
 	std::pair<std::string, time_t> secret(fastcgi::Request *request) const;
 
+	void initDnetNode();
+
 public:
 	virtual void onLoad();
 	virtual void onUnload();
@@ -105,6 +107,7 @@ private:
 	int                                        write_port_;
 	int                                        directory_bit_num_;
 	bool                                       use_cookie_;
+	struct dnet_config                         dnet_conf_;
 	std::string                                sign_key_;
 	std::string                                cookie_name_;
 	std::string                                cookie_key_;

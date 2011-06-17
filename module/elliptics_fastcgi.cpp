@@ -299,14 +299,13 @@ EllipticsProxy::onLoad() {
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
 	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
-	struct dnet_config dnet_conf;
-	memset(&dnet_conf, 0, sizeof (dnet_conf));
+	memset(&dnet_conf_, 0, sizeof (dnet_conf_));
 
-	dnet_conf.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
-	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
-	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
+	dnet_conf_.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
+	dnet_conf_.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
+	dnet_conf_.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
+	initDnetNode();
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -374,19 +373,6 @@ EllipticsProxy::onLoad() {
 		}
 	}
 
-	if (groups_.size() != 0) {
-		try {
-			elliptics_node_->add_groups(groups_);
-			log()->info("added dnet groups %s", groups.c_str());
-		}
-		catch (const std::exception &e) {
-			log()->error("can not add dnet groups %s %s", groups.c_str(), e.what());
-		}
-		catch (...) {
-			log()->error("can not add dnet groups %s", groups.c_str());
-		}
-	}
-
 	success_copies_num_ = config->asInt(path + "/dnet/success-copies-num", groups_.size());
 
 	std::vector<std::string> typemap;
@@ -420,6 +406,7 @@ EllipticsProxy::onUnload() {
 
 void
 EllipticsProxy::pingHandler(fastcgi::Request *request) {
+	initDnetNode();
 	if (elliptics_node_->state_num() < state_num_) {
 		request->setStatus(500);
 	}
@@ -430,6 +417,7 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
+	initDnetNode();
 	if (request->hasArg("groups")) {
 		Separator sep(":");
 		Tokenizer tok(request->getArg("groups"), sep);
@@ -558,6 +546,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
+	initDnetNode();
 	std::vector<int> groups_copy = groups_;
 	std::vector<int>::iterator git = groups_copy.begin();
 	++git;
@@ -660,6 +649,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::statLogHandler(fastcgi::Request *request) {
+	initDnetNode();
 	std::string result = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
 
 	result += "<data>\n";
@@ -720,6 +710,7 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::uploadHandler(fastcgi::Request *request) {
+	initDnetNode();
 	if (elliptics_node_->state_num() < state_num_) {
 		request->setStatus(403);
 		return;
@@ -850,6 +841,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::deleteHandler(fastcgi::Request *request) {
+	initDnetNode();
 	if (elliptics_node_->state_num() < state_num_) {
 		request->setStatus(403);
 		return;
@@ -908,6 +900,26 @@ EllipticsProxy::paramsNum(Tokenizer &tok) {
 		++result;
 	}
 	return result;
+}
+
+void
+EllipticsProxy::initDnetNode() {
+	if (NULL == elliptics_node_.get()) {
+		log()->debug("inited new dnet node");
+		elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf_));
+		if (groups_.size() != 0) {
+			try {
+				elliptics_node_->add_groups(groups_);
+				log()->info("added dnet groups");
+			}
+			catch (const std::exception &e) {
+				log()->error("can not add dnet groups %s", e.what());
+			}
+			catch (...) {
+				log()->error("can not add dnet groups");
+			}
+		}
+	}
 }
 
 FCGIDAEMON_REGISTER_FACTORIES_BEGIN()
