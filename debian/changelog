@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-60) unstable; urgency=low
+
+  * fixed upload bugs
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 21 Jun 2011 16:14:28 +0400
+
 elliptics-fastcgi (1.0-59) unstable; urgency=low
 
   * using shared pointer

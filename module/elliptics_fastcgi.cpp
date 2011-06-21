@@ -299,13 +299,14 @@ EllipticsProxy::onLoad() {
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
 	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
-	memset(&dnet_conf_, 0, sizeof (dnet_conf_));
+	struct dnet_config dnet_conf;
+	memset(&dnet_conf, 0, sizeof (dnet_conf));
 
-	dnet_conf_.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
-	dnet_conf_.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
-	dnet_conf_.flags = config->asInt(path + "/dnet/cfg-flags", 4);
+	dnet_conf.wait_timeout = config->asInt(path + "/dnet/wait-timeout", 0);
+	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
+	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf_));
+	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -373,6 +374,19 @@ EllipticsProxy::onLoad() {
 		}
 	}
 
+	if (groups_.size() != 0) {
+		try {
+			elliptics_node_->add_groups(groups_);
+			log()->info("added dnet groups %s", groups.c_str());
+		}
+		catch (const std::exception &e) {
+			log()->error("can not add dnet groups %s %s", groups.c_str(), e.what());
+		}
+		catch (...) {
+			log()->error("can not add dnet groups %s", groups.c_str());
+		}
+	}
+
 	success_copies_num_ = config->asInt(path + "/dnet/success-copies-num", groups_.size());
 
 	std::vector<std::string> typemap;
@@ -416,35 +430,11 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
-	if (request->hasArg("groups")) {
-		Separator sep(":");
-		Tokenizer tok(request->getArg("groups"), sep);
-
-		std::vector<int> groups;
-		for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
-			try {
-				int group_id = boost::lexical_cast<int>(*it);
-
-				if (group_id <= 0) {
-					throw fastcgi::HttpException(403);
-				}
-
-				groups.push_back(group_id);
-			}
-			catch (...) {
-				throw fastcgi::HttpException(403);
-			}
-		}
-
-		elliptics_node_->add_groups(groups);
-	}
-        else {
-		std::vector<int> groups = groups_;
-		std::vector<int>::iterator git = groups.begin();
-		++git;
-		std::random_shuffle(git, groups.end());
-		elliptics_node_->add_groups(groups);
-	}
+        std::vector<int> groups_copy = groups_;
+	std::vector<int>::iterator git = groups_copy.begin();
+	++git;
+	std::random_shuffle(git, groups_copy.end());
+	elliptics_node_->add_groups(groups_copy);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
