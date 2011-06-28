@@ -297,7 +297,7 @@ EllipticsProxy::onLoad() {
 
 	std::string elliptics_log_filename = config->asString(path + "/dnet/log/path");
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
-	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
+	elliptics_log_.reset(new zbr::elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
 	struct dnet_config dnet_conf;
 	memset(&dnet_conf, 0, sizeof (dnet_conf));
@@ -306,7 +306,7 @@ EllipticsProxy::onLoad() {
 	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
 	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
+	elliptics_node_.reset(new zbr::elliptics_node(*elliptics_log_, dnet_conf));
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -430,16 +430,13 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
-        std::vector<int> groups_copy = groups_;
-	std::vector<int>::iterator git = groups_copy.begin();
-	++git;
-	std::random_shuffle(git, groups_copy.end());
-	elliptics_node_->add_groups(groups_copy);
+	std::vector<int> groups = getGroups(request);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
 
 	try {
+		elliptics_node_->add_groups(groups);
 		std::string l = elliptics_node_->lookup(filename);
 
 		std::string result = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
@@ -468,6 +465,8 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 		dnet_dump_id_len_raw(eid.id, DNET_ID_SIZE, id);
 		file_backend_get_dir(eid.id, directory_bit_num_, hex_dir);
+
+		elliptics_node_->add_groups(groups_);
 
 		std::pair<std::string, time_t> s = !use_cookie_ ? std::make_pair(std::string(), time(NULL)) : secret(request);
 
@@ -505,9 +504,9 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 				for (std::size_t i = 0; i < std::min(hosts.size(), (size_t)2); ++i) {
 					std::string index = boost::lexical_cast<std::string>(i);
 					result += "<regional-host>" + std::string(hbuf) + '.' + hosts[i] + "</regional-host>";
-                                }
-                        }
-                }
+				}
+			}
+		}
 
 #endif
 
@@ -534,11 +533,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
-	std::vector<int> groups_copy = groups_;
-	std::vector<int>::iterator git = groups_copy.begin();
-	++git;
-	std::random_shuffle(git, groups_copy.end());
-	elliptics_node_->add_groups(groups_copy);
+	std::vector<int> groups = getGroups(request);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
@@ -562,6 +557,8 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 	}
 
 	try {
+		elliptics_node_->add_groups(groups);
+
 		std::string result = elliptics_node_->read_data_wait(filename, 0);
 
 		uint64_t ts = 0;
@@ -597,6 +594,8 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			}
 			result = result.substr(offset, std::string::npos);
 		}
+
+		elliptics_node_->add_groups(groups_);
 
 		char ts_str[128];
 		time_t timestamp = (time_t)(ts);
@@ -701,6 +700,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		return;
 	}
 
+	std::vector<int> groups = getGroups(request);
+
 	bool embed = request->hasArg("embed") || request->hasArg("embed_timestamp");
 	struct timespec ts;
 	ts.tv_sec = request->hasArg("timestamp") ? boost::lexical_cast<uint64_t>(request->getArg("timestamp")) : 0;
@@ -712,6 +713,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	fastcgi::DataBuffer buffer = request->requestBody();
 
 	try {
+		elliptics_node_->add_groups(groups);
+
 		std::string content;
 		if (embed) {
 			int size = sizeof (struct dnet_common_embed) * 2 + sizeof (uint64_t) * 2;
@@ -747,7 +750,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		request->setStatus(200);
 
-		struct dnet_id row;
+		struct dnet_id row;	
 		char id_str[2 * DNET_ID_SIZE + 1];
 		char crc_str[2 * DNET_ID_SIZE + 1];
 
@@ -801,6 +804,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			++written;
 		}
 
+		elliptics_node_->add_groups(groups_);
+
 		ostr << "<written>" << written << "</written>\n</post>";
 
 		std::string response = ostr.str();
@@ -846,6 +851,33 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 		log()->error("can not write file %s", filename.c_str());
 		request->setStatus(400);
 	}
+}
+
+std::vector<int>
+EllipticsProxy::getGroups(fastcgi::Request *request) const {
+	std::vector<int> groups;
+
+	if (request->hasArg("groups")) {
+		Separator sep(":");
+		Tokenizer tok(request->getArg("groups"), sep);
+
+		try {
+			for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
+				groups.push_back(boost::lexical_cast<int>(*it));
+			}
+		}
+		catch (...) {
+			throw fastcgi::HttpException(400);
+		}
+	}
+	else {
+		groups = groups_;
+		std::vector<int>::iterator git = groups.begin();
+		++git;
+		std::random_shuffle(git, groups.end());
+	}
+
+	return groups;
 }
 
 #ifdef HAVE_GEOBASE

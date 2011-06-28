@@ -69,6 +69,8 @@ private:
 		return logger_;
 	}
 
+	std::vector<int> getGroups(fastcgi::Request *request) const;
+
 #ifdef HAVE_GEOBASE
 	void refresh();
 #endif
@@ -94,8 +96,8 @@ private:
 	time_t                                 last_modified_;
 	RegionalModule*                        regional_module_;
 #endif
-	boost::shared_ptr<elliptics_log_file>  elliptics_log_;
-	boost::shared_ptr<elliptics_node>      elliptics_node_;
+	boost::shared_ptr<zbr::elliptics_log_file>  elliptics_log_;
+	boost::shared_ptr<zbr::elliptics_node>      elliptics_node_;
 	std::map<std::string, std::string>     typemap_;
 	std::vector<std::string>               remotes_;
 	std::vector<int>                       groups_;

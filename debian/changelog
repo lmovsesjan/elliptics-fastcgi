@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.0-61) unstable; urgency=low
+
+  * read/write in custom groups from query
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 28 Jun 2011 13:28:44 +0400
+
 elliptics-fastcgi (1.0-60) unstable; urgency=low
 
   * fixed upload bugs
