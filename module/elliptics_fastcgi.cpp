@@ -36,6 +36,7 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
+#include "curl_wrapper.hpp"
 #include "elliptics_fastcgi.hpp"
 
 namespace elliptics {
@@ -404,6 +405,9 @@ EllipticsProxy::onLoad() {
 
 	expires_ = config->asInt(path + "/dnet/expires-time", 0);
 
+	metabase_write_addr_ = config->asString(path + "/dnet/metabase/write-addr", "");
+	metabase_read_addr_ = config->asString(path + "/dnet/metabase/read-addr", "");
+
 	registerHandler("ping", &EllipticsProxy::pingHandler);
 	registerHandler("download-info", &EllipticsProxy::downloadInfoHandler);
 	registerHandler("get", &EllipticsProxy::getHandler);
@@ -430,10 +434,21 @@ EllipticsProxy::pingHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
-	std::vector<int> groups = getGroups(request);
-
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
+
+	std::vector<int> groups;
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		try {
+			groups = getMetaInfo(filename);
+		}
+		catch (...) {
+			groups = getGroups(request);
+		}
+	}
+	else {
+		groups = getGroups(request);
+	}
 
 	try {
 		elliptics_node_->add_groups(groups);
@@ -533,10 +548,21 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
-	std::vector<int> groups = getGroups(request);
-
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
+
+	std::vector<int> groups;
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		try {
+			groups = getMetaInfo(filename);
+		}
+		catch (...) {
+			groups = getGroups(request);
+		}
+	}
+	else {
+		groups = getGroups(request);
+	}
 
 	std::string extention = filename.substr(filename.rfind('.') + 1, std::string::npos);
 
@@ -700,8 +726,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		return;
 	}
 
-	std::vector<int> groups = getGroups(request);
-
 	bool embed = request->hasArg("embed") || request->hasArg("embed_timestamp");
 	struct timespec ts;
 	ts.tv_sec = request->hasArg("timestamp") ? boost::lexical_cast<uint64_t>(request->getArg("timestamp")) : 0;
@@ -709,6 +733,12 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/upload/") - 1, std::string::npos);
+
+	std::vector<int> groups = getGroups(request);
+
+        if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		uploadMetaInfo(groups, filename);
+	}
 
 	fastcgi::DataBuffer buffer = request->requestBody();
 
@@ -839,8 +869,23 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/delete/") - 1, std::string::npos);
 
+	std::vector<int> groups;
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		try {
+			groups = getMetaInfo(filename);
+		}
+		catch (...) {
+			groups = getGroups(request);
+		}
+	}
+	else {
+		groups = getGroups(request);
+	}
+
 	try {
+		elliptics_node_->add_groups(groups);
 		elliptics_node_->remove(filename);
+		elliptics_node_->add_groups(groups_);
 		request->setStatus(200);
 	}
 	catch (const std::exception &e) {
@@ -878,6 +923,71 @@ EllipticsProxy::getGroups(fastcgi::Request *request) const {
 	}
 
 	return groups;
+}
+
+void
+EllipticsProxy::uploadMetaInfo(const std::vector<int> &groups, const std::string &filename) const {
+	try {
+		std::string url = metabase_write_addr_ + "/groups-meta." + filename + ".txt";
+		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
+		curl.header("Expect", "");
+		curl.timeout(10);
+
+		std::string result;
+		for (std::size_t i = 0; i < groups.size(); ++i) {
+			if (!result.empty()) {
+				result += ':';
+			}
+			result += boost::lexical_cast<std::string>(groups[i]);
+		}
+
+		std::stringstream response;
+		long status = curl.perform_post(response, result);
+		if (200 != status) {
+			throw fastcgi::HttpException(403);
+		}
+	}
+	catch (const fastcgi::HttpException &e) {
+		throw;
+	}
+	catch (...) {
+		throw fastcgi::HttpException(403);
+	}
+}
+
+std::vector<int>
+EllipticsProxy::getMetaInfo(const std::string &filename) const {
+	try {
+		std::stringstream response;
+		long status;
+
+		std::string url = metabase_read_addr_ + "/groups-meta." + filename + ".txt";
+		yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
+		curl.header("Expect", "");
+		curl.timeout(10);
+		status = curl.perform(response);
+
+		if (200 != status) {
+			throw fastcgi::NotFound();
+		}
+
+		std::vector<int> groups;
+
+		Separator sep(":");
+		Tokenizer tok(response.str(), sep);
+
+		for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
+			groups.push_back(boost::lexical_cast<int>(*it));
+		}
+
+		return groups;
+	}
+	catch (const fastcgi::HttpException &e) {
+		throw;
+	}
+	catch (...) {
+		throw fastcgi::HttpException(403);
+	}
 }
 
 #ifdef HAVE_GEOBASE

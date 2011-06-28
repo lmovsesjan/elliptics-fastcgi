@@ -13,5 +13,5 @@ AM_CXXFLAGS = -W -Wall -g -O2 -fPIC
 AM_CPPFLAGS = -I @top_srcdir@/config/ @BOOST_CPPFLAGS@ @FASTCGIDAEMON_CFLAGS@
 AM_LDFLAGS  = @BOOST_THREAD_LDFLAGS@
 
-noinst_HEADERS = elliptics_fastcgi.hpp refresher.hpp
+noinst_HEADERS = boost_threaded.hpp curl_wrapper.hpp elliptics_fastcgi.hpp refresher.hpp writer.hpp
 
