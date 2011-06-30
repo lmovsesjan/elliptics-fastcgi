@@ -518,7 +518,25 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 				for (std::size_t i = 0; i < std::min(hosts.size(), (size_t)2); ++i) {
 					std::string index = boost::lexical_cast<std::string>(i);
-					result += "<regional-host>" + std::string(hbuf) + '.' + hosts[i] + "</regional-host>";
+					std::string host = std::string(hbuf) + '.' + hosts[i];
+
+					try {
+						std::stringstream tmp;
+
+						std::string url = host + "/ping";
+						yandex::common::curl_wrapper<yandex::common::boost_threading_traits> curl(url);
+						curl.header("Expect", "");
+						curl.timeout(1);
+						long status = curl.perform(tmp);
+
+						if (200 != status) {
+							throw std::runtime_error("non 200 status from regional proxy");
+						}
+
+						result += "<regional-host>" + host + "</regional-host>";
+					}
+					catch (...) {
+					}
 				}
 			}
 		}
