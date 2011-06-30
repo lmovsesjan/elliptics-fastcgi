@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-2) unstable; urgency=low
+
+  * build with stable elliptics
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Thu, 30 Jun 2011 21:04:38 +0400
+
 elliptics-fastcgi (1.1-1) unstable; urgency=low
 
   * checking regional proxies

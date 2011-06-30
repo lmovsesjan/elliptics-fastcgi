@@ -4,7 +4,7 @@ Maintainer: Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>
 Build-Depends: debhelper (>= 5),
  libfastcgi-daemon2-dev,
  libgeobase3-dev,
- elliptics,
+ elliptics (= 2.9.7.9),
  elliptics-regional-module
 Standards-Version: 3.7.2
 
