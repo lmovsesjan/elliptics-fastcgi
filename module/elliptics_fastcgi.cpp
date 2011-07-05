@@ -298,7 +298,7 @@ EllipticsProxy::onLoad() {
 
 	std::string elliptics_log_filename = config->asString(path + "/dnet/log/path");
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
-	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
+	elliptics_log_.reset(new zbr::elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
 	struct dnet_config dnet_conf;
 	memset(&dnet_conf, 0, sizeof (dnet_conf));
@@ -307,7 +307,7 @@ EllipticsProxy::onLoad() {
 	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
 	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
+	elliptics_node_.reset(new zbr::elliptics_node(*elliptics_log_, dnet_conf));
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -603,7 +603,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 	try {
 		elliptics_node_->add_groups(groups);
 
-		std::string result = elliptics_node_->read_data_wait(filename, 0);
+		std::string result = elliptics_node_->read_data_wait(filename, 0, 0, 0, 0, EBLOB_TYPE_DATA);
 
 		uint64_t ts = 0;
 		if (request->hasArg("embed") || request->hasArg("embed_timestamp")) {
@@ -786,7 +786,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		elliptics_node_->transform(filename, id);
 
-		int result = elliptics_node_->write_data_wait(filename, content);
+		int result = elliptics_node_->write_data_wait(filename, content, 0, 0, 0, EBLOB_TYPE_DATA);
 
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
