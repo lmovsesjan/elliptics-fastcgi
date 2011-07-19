@@ -794,7 +794,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		elliptics_node_->write_metadata(id, filename, groups_, ts);
+		elliptics_node_->write_metadata(id, filename, groups, ts);
 
 		request->setStatus(200);
 
@@ -810,44 +810,38 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		ostr << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" <<
 			"<post obj=\"" << filename << "\" id=\"" << id_str <<
-			"\" crc=\"" << crc_str << "\" groups=\"" << groups_.size() <<
+			"\" crc=\"" << crc_str << "\" groups=\"" << groups.size() <<
 			"\" size=\"" << content.length() << "\">\n";
 
-		std::string lookup = elliptics_node_->lookup(filename);
-		const void *data = lookup.data();
-
-		struct dnet_addr *addr = (struct dnet_addr *)data;
-		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
-
-		int port = dnet_server_convert_port((struct sockaddr *)a->addr.addr, a->addr.addr_len);
-
-		struct dnet_id eid;
-
-		elliptics_node_->transform(filename, eid);
-
-		char res_id[2 * DNET_ID_SIZE + 1];
-		char hex_dir[2 * DNET_ID_SIZE + 1];
-
-		dnet_dump_id_len_raw(eid.id, DNET_ID_SIZE, res_id);
-		file_backend_get_dir(eid.id, directory_bit_num_, hex_dir);
-
-		int err = cmd->status;
-
 		std::size_t written = 0;
-		for (std::size_t i = 0; i < groups_.size(); ++i) {
-			std::string addr;
+                for (std::size_t i = 0; i < groups.size(); ++i) {
+			std::string lookup;
+			zbr::elliptics_callback c;
+			id.group_id = groups[i];
 			try {
-				addr = elliptics_node_->lookup_addr(filename, groups_[i]);
+				elliptics_node_->lookup(id, c);
+				lookup = c.wait();
 			}
 			catch (...) {
 				continue;
 			}
 
-			ostr << "<complete addr=\"" << addr << "\" path=\"/" <<
-				port - base_port_ << '/' << hex_dir << '/' << res_id
-				<< "\" group=\"" << groups_[i] << "\" status=\"" << err << "\"/>\n";
+			const void *data = lookup.data();
+
+			struct dnet_addr *addr = (struct dnet_addr *)data;
+			struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
+			struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
+			struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+
+			struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
+			dnet_convert_file_info(info);
+
+			char addr_dst[512];
+			dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
+
+			ostr << "<complete addr=\"" << addr_dst << "\" path=\"" <<
+				(char *)(info + 1) << "\" group=\"" << groups[i] <<
+				"\" status=\"0\"/>\n";
 
 			++written;
 		}

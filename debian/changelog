@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-5) unstable; urgency=low
+
+  * fixed upload lookup
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 19 Jul 2011 20:51:28 +0400
+
 elliptics-fastcgi (1.1-4) unstable; urgency=low
 
   * rebuild with new elliptics
