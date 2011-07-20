@@ -313,6 +313,8 @@ EllipticsProxy::onLoad() {
 	write_port_ = config->asInt(path + "/dnet/write-port", 9000);
 	directory_bit_num_ = config->asInt(path + "/dnet/directory-bit-num");
 
+	replication_count_ = config->asInt(path + "/dnet/replication-count", 0);
+
 	use_cookie_ = (config->asString(path + "/dnet/cookie/name", "") != "");
 
 	if (use_cookie_) {
@@ -822,7 +824,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		elliptics_node_->transform(filename, id);
 
-		int result = elliptics_node_->write_data_wait(filename, content, 0, 0);
+		int result = elliptics_node_->write_data_wait(filename, content);
 
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
@@ -882,9 +884,24 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			++written;
 		}
 
+		if (replication_count_ != 0 && written < replication_count_) {
+			try {
+				elliptics_node_->remove(filename);
+				request->setStatus(410);
+			}
+			catch (...) {
+				request->setStatus(409);
+			}
+			return;
+		}
+
 		elliptics_node_->add_groups(groups_);
 
 		ostr << "<written>" << written << "</written>\n</post>";
+
+		if (written < replication_count_) {
+
+		}
 
 		std::string response = ostr.str();
 

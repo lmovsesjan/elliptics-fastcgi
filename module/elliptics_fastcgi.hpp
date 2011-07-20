@@ -108,6 +108,7 @@ private:
 	std::vector<int>                            groups_;
 	std::size_t                                 success_copies_num_;
 	int                                         state_num_;
+	int                                         replication_count_;
 	int                                         base_port_;
 	int                                         write_port_;
 	int                                         directory_bit_num_;
