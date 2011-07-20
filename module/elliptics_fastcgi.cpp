@@ -790,7 +790,20 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/upload/") - 1, std::string::npos);
 
-	std::vector<int> groups = getGroups(request);
+	int replication_count = 0;
+	if (request->hasArg("replication-count")) {
+		try {
+			replication_count = boost::lexical_cast<int>(request->getArg("replication-count"));
+		}
+		catch (...) {
+			replication_count = 0;
+		}
+	}
+	else {
+		replication_count = replication_count_;
+	}
+
+	std::vector<int> groups = getGroups(request, replication_count);
 
         if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		uploadMetaInfo(groups, filename);
@@ -964,7 +977,7 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 }
 
 std::vector<int>
-EllipticsProxy::getGroups(fastcgi::Request *request) const {
+EllipticsProxy::getGroups(fastcgi::Request *request, size_t count) const {
 	std::vector<int> groups;
 
 	if (request->hasArg("groups")) {
@@ -985,6 +998,10 @@ EllipticsProxy::getGroups(fastcgi::Request *request) const {
 		std::vector<int>::iterator git = groups.begin();
 		++git;
 		std::random_shuffle(git, groups.end());
+	}
+
+	if (count != 0 && count < groups.size()) {
+		groups.erase(groups.begin() + count, groups.end());
 	}
 
 	return groups;

@@ -72,7 +72,7 @@ private:
 
 	void allowOrigin(fastcgi::Request *request) const;
 
-	std::vector<int> getGroups(fastcgi::Request *request) const;
+	std::vector<int> getGroups(fastcgi::Request *request, size_t count = 0) const;
 	void uploadMetaInfo(const std::vector<int> &groups, const std::string &filename) const;
 	std::vector<int> getMetaInfo(const std::string &filename) const;
 
