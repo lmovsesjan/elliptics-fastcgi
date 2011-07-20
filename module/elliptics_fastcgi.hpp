@@ -70,6 +70,8 @@ private:
 		return logger_;
 	}
 
+	void allowOrigin(fastcgi::Request *request) const;
+
 	std::vector<int> getGroups(fastcgi::Request *request) const;
 	void uploadMetaInfo(const std::vector<int> &groups, const std::string &filename) const;
 	std::vector<int> getMetaInfo(const std::string &filename) const;
@@ -121,6 +123,8 @@ private:
 	time_t                                      expires_;
 	std::string                                 metabase_write_addr_;
 	std::string                                 metabase_read_addr_;
+	std::string                                 allow_origin_domain_;
+	std::set<std::string>                       allow_origin_handlers_;
 
 };
 

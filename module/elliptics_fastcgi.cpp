@@ -229,6 +229,11 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 		if (handlers_.end() == it) {
 			throw fastcgi::HttpException(404);
 		}
+
+		if (allow_origin_handlers_.end() != allow_origin_handlers_.find(handler)) {
+			allowOrigin(request);
+		}
+
 		(this->*it->second)(request);
 	}
 	catch (const fastcgi::HttpException &e) {
@@ -236,6 +241,27 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 	}
 	catch (...) {
 		throw fastcgi::HttpException(400);
+	}
+}
+
+void
+EllipticsProxy::allowOrigin(fastcgi::Request *request) const {
+	if (allow_origin_domain_.empty()) {
+		return;
+	}
+
+	if (!request->hasHeader("Origin")) {
+		return;
+	}
+
+	std::string domain = request->getHeader("Origin");
+
+	if (domain.length() < allow_origin_domain_.length()) {
+		return;
+	}
+
+	if (!domain.compare(domain.length() - allow_origin_domain_.length(), std::string::npos, allow_origin_domain_)) {
+		request->setHeader("Access-Control-Allow-Origin", domain);
 	}
 }
 
@@ -409,6 +435,14 @@ EllipticsProxy::onLoad() {
 
 	metabase_write_addr_ = config->asString(path + "/dnet/metabase/write-addr", "");
 	metabase_read_addr_ = config->asString(path + "/dnet/metabase/read-addr", "");
+
+	allow_origin_domain_ = config->asString(path + "/dnet/allow-origin/domain", "");
+
+	names.clear();
+	config->subKeys(path + "/dnet/allow-origin/handlers/handler", names);
+	for (std::vector<std::string>::iterator it = names.begin(), end = names.end(); end != it; ++it) {
+		allow_origin_handlers_.insert(config->asString(it->c_str()));
+	}
 
 	registerHandler("ping", &EllipticsProxy::pingHandler);
 	registerHandler("download-info", &EllipticsProxy::downloadInfoHandler);
