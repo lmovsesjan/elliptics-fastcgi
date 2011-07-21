@@ -805,7 +805,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 	std::vector<int> groups = getGroups(request, replication_count);
 
-        if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		uploadMetaInfo(groups, filename);
 	}
 
@@ -865,7 +865,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			"\" size=\"" << content.length() << "\">\n";
 
 		std::size_t written = 0;
-                for (std::size_t i = 0; i < groups.size(); ++i) {
+		for (std::size_t i = 0; i < groups.size(); ++i) {
 			std::string lookup;
 			elliptics_callback c;
 			id.group_id = groups[i];
