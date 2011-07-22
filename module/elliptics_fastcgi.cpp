@@ -897,7 +897,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			++written;
 		}
 
-		if (replication_count_ != 0 && written < replication_count_) {
+		if (replication_count != 0 && written < replication_count) {
 			try {
 				elliptics_node_->remove(filename);
 				request->setStatus(410);
@@ -914,7 +914,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		std::string response = ostr.str();
 
-		if (replocation_count == 0 && written < success_copies_num_) {
+		if (replication_count == 0 && written < success_copies_num_) {
 			log()->error("can not write file %s %d copies instead %d", filename.c_str(), written, success_copies_num_);
 			request->setStatus(403);
 		}
