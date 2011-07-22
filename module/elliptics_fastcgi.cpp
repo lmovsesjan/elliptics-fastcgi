@@ -912,13 +912,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		ostr << "<written>" << written << "</written>\n</post>";
 
-		if (written < replication_count_) {
-
-		}
-
 		std::string response = ostr.str();
 
-		if (written < success_copies_num_) {
+		if (replocation_count == 0 && written < success_copies_num_) {
 			log()->error("can not write file %s %d copies instead %d", filename.c_str(), written, success_copies_num_);
 			request->setStatus(403);
 		}
