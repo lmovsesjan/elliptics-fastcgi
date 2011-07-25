@@ -845,10 +845,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		elliptics_node_->write_metadata(id, filename, groups, ts);
-
-		request->setStatus(200);
-
 		struct dnet_id row;	
 		char id_str[2 * DNET_ID_SIZE + 1];
 		char crc_str[2 * DNET_ID_SIZE + 1];
@@ -864,6 +860,15 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			"\" crc=\"" << crc_str << "\" groups=\"" << groups.size() <<
 			"\" size=\"" << content.length() << "\">\n";
 
+		std::vector<int> temp_groups;
+		if (replication_count != 0 && groups.size() != groups_.size()) {
+			for (std::size_t i = 0; i < groups_.size(); ++i) {
+				if (groups.end() == std::find(groups.begin(), groups.end(), groups_[i])) {
+					temp_groups.push_back(groups_[i]);
+				}
+			}
+		}
+
 		std::size_t written = 0;
 		for (std::size_t i = 0; i < groups.size(); ++i) {
 			std::string lookup;
@@ -874,7 +879,45 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				lookup = c.wait();
 			}
 			catch (...) {
-				continue;
+				if (replication_count == 0) {
+					continue;
+				}
+
+				bool uploaded = false;
+
+				for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
+					std::vector<int> upload_group;
+					upload_group.push_back(*it);
+
+					elliptics_node_->add_groups(upload_group);
+
+					int temp_res = elliptics_node_->write_data_wait(filename, content);
+					if (!temp_res) {
+						temp_groups.erase(it);
+						continue;
+					}
+
+					id.group_id = *it;
+					try {
+						elliptics_node_->lookup(id, c);
+						lookup = c.wait();
+
+						groups[i] = *it;
+						temp_groups.erase(it);
+
+						uploaded = true;
+
+						break;
+					}
+					catch (...) {
+						temp_groups.erase(it);
+						continue;
+					}
+				}
+
+				if (!uploaded) {
+					continue;
+				}
 			}
 
 			const void *data = lookup.data();
@@ -907,6 +950,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 			return;
 		}
+
+		elliptics_node_->write_metadata(id, filename, groups, ts);
 
 		elliptics_node_->add_groups(groups_);
 
