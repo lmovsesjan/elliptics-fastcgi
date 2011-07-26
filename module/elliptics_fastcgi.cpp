@@ -246,7 +246,7 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 
 void
 EllipticsProxy::allowOrigin(fastcgi::Request *request) const {
-	if (allow_origin_domain_.empty()) {
+	if (0 == allow_origin_domains_.size()) {
 		return;
 	}
 
@@ -256,13 +256,29 @@ EllipticsProxy::allowOrigin(fastcgi::Request *request) const {
 
 	std::string domain = request->getHeader("Origin");
 
-	if (domain.length() < allow_origin_domain_.length()) {
-		return;
-	}
+	for (std::set<std::string>::const_iterator it = allow_origin_domains_.begin(), end = allow_origin_domains_.end();
+		end != it; ++it) {
+		std::string allow_origin_domain = *it;
 
-	if (!domain.compare(domain.length() - allow_origin_domain_.length(), std::string::npos, allow_origin_domain_)) {
-		request->setHeader("Access-Control-Allow-Origin", domain);
+		if (domain.length() < allow_origin_domain.length() - 1) {
+			continue;
+		}
+
+		bool allow = false;
+
+		if (domain.length() == allow_origin_domain.length() - 1) {
+			allow = !allow_origin_domain.compare(1, std::string::npos, domain);
+		}
+		else {
+			allow = !domain.compare(domain.length() - allow_origin_domain.length(), std::string::npos, allow_origin_domain);
+		}
+
+		if (allow) {
+			request->setHeader("Access-Control-Allow-Origin", domain);
+			return;
+		}
 	}
+	throw fastcgi::HttpException(403);
 }
 
 void
@@ -438,7 +454,11 @@ EllipticsProxy::onLoad() {
 	metabase_write_addr_ = config->asString(path + "/dnet/metabase/write-addr", "");
 	metabase_read_addr_ = config->asString(path + "/dnet/metabase/read-addr", "");
 
-	allow_origin_domain_ = config->asString(path + "/dnet/allow-origin/domain", "");
+	names.clear();
+	config->subKeys(path + "/dnet/allow-origin/domains/domain", names);
+	for (std::vector<std::string>::iterator it = names.begin(), end = names.end(); end != it; ++it) {
+		allow_origin_domains_.insert(config->asString(it->c_str()));
+	}
 
 	names.clear();
 	config->subKeys(path + "/dnet/allow-origin/handlers/handler", names);
