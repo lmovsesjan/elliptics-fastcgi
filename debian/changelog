@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-15) unstable; urgency=low
+
+  * fixed allow origin
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Wed, 27 Jul 2011 17:15:20 +0400
+
 elliptics-fastcgi (1.1-14) unstable; urgency=low
 
   * fixed allow origins

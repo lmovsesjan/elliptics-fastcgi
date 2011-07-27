@@ -255,6 +255,9 @@ EllipticsProxy::allowOrigin(fastcgi::Request *request) const {
 	}
 
 	std::string domain = request->getHeader("Origin");
+	if (!domain.compare(0, sizeof ("http://") - 1, "http://")) {
+		domain = domain.substr(sizeof ("http://") - 1, std::string::npos);
+	}
 
 	for (std::set<std::string>::const_iterator it = allow_origin_domains_.begin(), end = allow_origin_domains_.end();
 		end != it; ++it) {
