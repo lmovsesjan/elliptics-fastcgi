@@ -664,7 +664,13 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 	try {
 		elliptics_node_->add_groups(groups);
 
-		std::string result = elliptics_node_->read_data_wait(filename, 0, 0, 0, 0);
+		unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+		uint64_t offset = request->hasArg("offset") ? boost::lexical_cast<uint64_t>(request->getArg("offset")) : 0;
+		uint64_t size = request->hasArg("size") ? boost::lexical_cast<uint64_t>(request->getArg("size")) : 0;
+
+		std::string result = elliptics_node_->read_data_wait(filename, offset, size, aflags, ioflags/*, column*/);
 
 		uint64_t ts = 0;
 		if (request->hasArg("embed") || request->hasArg("embed_timestamp")) {
@@ -810,6 +816,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	ts.tv_sec = request->hasArg("timestamp") ? boost::lexical_cast<uint64_t>(request->getArg("timestamp")) : 0;
 	ts.tv_nsec = 0;
 
+	unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+	unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+	int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+	uint64_t offset = request->hasArg("offset") ? boost::lexical_cast<uint64_t>(request->getArg("offset")) : 0;
+
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/upload/") - 1, std::string::npos);
 
@@ -860,7 +871,18 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		elliptics_node_->transform(filename, id);
 
-		int result = elliptics_node_->write_data_wait(filename, content);
+		int result;
+
+/*		if (request->hasArg("prepare")) {
+			uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
+			result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
+		} if (request->hasArg("commit")) {
+			result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
+		} if (request->hasArg("plain_write")) {
+			result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+		} else {*/
+			result = elliptics_node_->write_data_wait(filename, content);
+//		}
 
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
@@ -892,8 +914,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 		}
 
-		std::size_t written = 0;
-		for (std::size_t i = 0; i < groups.size(); ++i) {
+		int written = 0;
+		for (int i = 0; i < (int)groups.size(); ++i) {
 			std::string lookup;
 			elliptics_callback c;
 			id.group_id = groups[i];
@@ -943,24 +965,30 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				}
 			}
 
-			const void *data = lookup.data();
+			if (lookup.size() > (sizeof(struct dnet_cmd) +
+					     sizeof(struct dnet_addr) +
+					     sizeof(struct dnet_attr) +
+					     sizeof(struct dnet_addr_attr) +
+					     sizeof(struct dnet_file_info))) {
+				const void *data = lookup.data();
 
-			struct dnet_addr *addr = (struct dnet_addr *)data;
-			struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-			struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-			struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+				struct dnet_addr *addr = (struct dnet_addr *)data;
+				struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
+				struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
+				struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
 
-			struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
-			dnet_convert_file_info(info);
+				struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
+				dnet_convert_file_info(info);
 
-			char addr_dst[512];
-			dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
+				char addr_dst[512];
+				dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
 
-			ostr << "<complete addr=\"" << addr_dst << "\" path=\"" <<
-				(char *)(info + 1) << "\" group=\"" << groups[i] <<
-				"\" status=\"0\"/>\n";
+				ostr << "<complete addr=\"" << addr_dst << "\" path=\"" <<
+					(char *)(info + 1) << "\" group=\"" << groups[i] <<
+					"\" status=\"0\"/>\n";
 
-			++written;
+				++written;
+			}
 		}
 
 		if (replication_count != 0 && written < replication_count) {

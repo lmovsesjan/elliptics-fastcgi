@@ -1,3 +1,10 @@
+elliptics-fastcgi (1.1-15.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * fixed path writing
+
+ -- lmovsesjan <lmovsesjan@ararat-lucid.yandex.ru>  Thu, 28 Jul 2011 18:26:38 +0400
+
 elliptics-fastcgi (1.1-15) unstable; urgency=low
 
   * fixed allow origin

@@ -106,7 +106,7 @@ private:
 	std::map<std::string, std::string>          typemap_;
 	std::vector<std::string>                    remotes_;
 	std::vector<int>                            groups_;
-	std::size_t                                 success_copies_num_;
+	int                                         success_copies_num_;
 	int                                         state_num_;
 	int                                         replication_count_;
 	int                                         base_port_;
