@@ -36,6 +36,7 @@
 
 #include <elliptics/cppdef.h>
 
+#include "boost_threaded.hpp"
 #include "refresher.hpp"
 
 namespace elliptics {
@@ -69,6 +70,12 @@ private:
 		return logger_;
 	}
 
+	void allowOrigin(fastcgi::Request *request) const;
+
+	std::vector<int> getGroups(fastcgi::Request *request, size_t count = 0) const;
+	void uploadMetaInfo(const std::vector<int> &groups, const std::string &filename) const;
+	std::vector<int> getMetaInfo(const std::string &filename) const;
+
 #ifdef HAVE_GEOBASE
 	void refresh();
 #endif
@@ -84,36 +91,41 @@ public:
 	virtual void handleRequest(fastcgi::Request *request, fastcgi::HandlerContext *context);
 
 private:
-	fastcgi::Logger                       *logger_;
-	RequestHandlers                        handlers_;
+	fastcgi::Logger                            *logger_;
+	RequestHandlers                             handlers_;
 #ifdef HAVE_GEOBASE
-	boost::shared_ptr<geobase3::lookup>    lookup_;
-	std::auto_ptr<Refresher>               refresher_;
-	boost::mutex                           mutex_;
-	std::string                            filename_;
-	time_t                                 last_modified_;
-	RegionalModule*                        regional_module_;
+	boost::shared_ptr<geobase3::lookup>         lookup_;
+	std::auto_ptr<Refresher>                    refresher_;
+	boost::mutex                                mutex_;
+	std::string                                 filename_;
+	time_t                                      last_modified_;
+	RegionalModule*                             regional_module_;
 #endif
-	boost::shared_ptr<elliptics_log_file>  elliptics_log_;
-	boost::shared_ptr<elliptics_node>      elliptics_node_;
-	std::map<std::string, std::string>     typemap_;
-	std::vector<std::string>               remotes_;
-	std::vector<int>                       groups_;
-	std::size_t                            success_copies_num_;
-	int                                    state_num_;
-	int                                    base_port_;
-	int                                    write_port_;
-	int                                    directory_bit_num_;
-	bool                                   use_cookie_;
-	std::string                            sign_key_;
-	std::string                            cookie_name_;
-	std::string                            cookie_key_;
-	std::string                            cookie_path_;
-	std::string                            cookie_domain_;
-	time_t                                 cookie_expires_;
-	std::set<std::string>                  deny_list_;
-	std::set<std::string>                  allow_list_;
-	time_t                                 expires_;
+	boost::shared_ptr<elliptics_log_file>       elliptics_log_;
+	boost::shared_ptr<elliptics_node>           elliptics_node_;
+	std::map<std::string, std::string>          typemap_;
+	std::vector<std::string>                    remotes_;
+	std::vector<int>                            groups_;
+	std::size_t                                 success_copies_num_;
+	int                                         state_num_;
+	int                                         replication_count_;
+	int                                         base_port_;
+	int                                         write_port_;
+	int                                         directory_bit_num_;
+	bool                                        use_cookie_;
+	std::string                                 sign_key_;
+	std::string                                 cookie_name_;
+	std::string                                 cookie_key_;
+	std::string                                 cookie_path_;
+	std::string                                 cookie_domain_;
+	time_t                                      cookie_expires_;
+	std::set<std::string>                       deny_list_;
+	std::set<std::string>                       allow_list_;
+	time_t                                      expires_;
+	std::string                                 metabase_write_addr_;
+	std::string                                 metabase_read_addr_;
+	std::set<std::string>                       allow_origin_domains_;
+	std::set<std::string>                       allow_origin_handlers_;
 
 };
 

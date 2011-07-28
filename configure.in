@@ -29,6 +29,7 @@ AC_CHECK_FASTCGIDAEMON
 
 AC_CHECK_LIB([elliptics_cpp], [main])
 AC_CHECK_LIB([crypto], [main])
+AC_CHECK_LIB([curl], [main])
 
 ac_geobase="no"
 AC_ARG_ENABLE(geobase,
