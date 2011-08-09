@@ -4,8 +4,11 @@ Maintainer: Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>
 Build-Depends: debhelper (>= 5),
  libfastcgi-daemon2-dev,
  libgeobase3-dev,
- elliptics,
- elliptics-regional-module
+ elliptics-2.10 (>= 2.10.1.8),
+ elliptics-regional-module,
+ pkg-config,
+ libcurl-dev,
+ libyandex-utils-http
 Standards-Version: 3.7.2
 
 Package: elliptics-fastcgi
@@ -17,4 +20,3 @@ Depends: ${shlibs:Depends},
 Description: Elliptics is one of the best prodution enterprise high scalability and availability system, wrote by one
  of the most genius software developers of the whole World. This is just a shitty FastCGI proxy for Elliptics, wrote
  by the dick from the mountain.
-
