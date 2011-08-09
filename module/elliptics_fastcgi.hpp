@@ -62,9 +62,12 @@ private:
 	void pingHandler(fastcgi::Request *request);
 	void downloadInfoHandler(fastcgi::Request *request);
 	void getHandler(fastcgi::Request *request);
+	void rangeHandler(fastcgi::Request *request);
 	void statLogHandler(fastcgi::Request *request);
 	void uploadHandler(fastcgi::Request *request);
 	void deleteHandler(fastcgi::Request *request);
+
+	void dnet_parse_numeric_id(const std::string &value, struct dnet_id &id);
 
 	fastcgi::Logger* log() const {
 		return logger_;
@@ -101,8 +104,8 @@ private:
 	time_t                                      last_modified_;
 	RegionalModule*                             regional_module_;
 #endif
-	boost::shared_ptr<elliptics_log_file>       elliptics_log_;
-	boost::shared_ptr<elliptics_node>           elliptics_node_;
+	boost::shared_ptr<zbr::elliptics_log_file>       elliptics_log_;
+	boost::shared_ptr<zbr::elliptics_node>           elliptics_node_;
 	std::map<std::string, std::string>          typemap_;
 	std::vector<std::string>                    remotes_;
 	std::vector<int>                            groups_;

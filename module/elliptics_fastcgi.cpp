@@ -208,6 +208,9 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 			else if (request->hasArg("direct")) {
 				handler = "get";
 			}
+			else if (request->hasArg("range")) {
+				handler = "range";
+			}
 			else if (request->hasArg("unlink")) {
 				handler = "delete";
 			}
@@ -347,7 +350,7 @@ EllipticsProxy::onLoad() {
 
 	std::string elliptics_log_filename = config->asString(path + "/dnet/log/path");
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
-	elliptics_log_.reset(new elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
+	elliptics_log_.reset(new zbr::elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
 	struct dnet_config dnet_conf;
 	memset(&dnet_conf, 0, sizeof (dnet_conf));
@@ -356,7 +359,7 @@ EllipticsProxy::onLoad() {
 	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
 	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new elliptics_node(*elliptics_log_, dnet_conf));
+	elliptics_node_.reset(new zbr::elliptics_node(*elliptics_log_, dnet_conf));
 
 	std::vector<std::string> names;
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -472,6 +475,7 @@ EllipticsProxy::onLoad() {
 	registerHandler("ping", &EllipticsProxy::pingHandler);
 	registerHandler("download-info", &EllipticsProxy::downloadInfoHandler);
 	registerHandler("get", &EllipticsProxy::getHandler);
+	registerHandler("range", &EllipticsProxy::rangeHandler);
 	registerHandler("stat", &EllipticsProxy::pingHandler);
 	registerHandler("stat_log", &EllipticsProxy::statLogHandler);
 	registerHandler("stat-log", &EllipticsProxy::statLogHandler);
@@ -626,6 +630,99 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 }
 
 void
+EllipticsProxy::rangeHandler(fastcgi::Request *request) {
+	std::string filename = request->hasArg("name") ? request->getArg("name") :
+		request->getScriptName().substr(sizeof ("/range/") - 1, std::string::npos);
+
+	std::vector<int> groups;
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		try {
+			groups = getMetaInfo(filename);
+		}
+		catch (...) {
+			groups = getGroups(request);
+		}
+	}
+	else {
+		groups = getGroups(request);
+	}
+
+	std::string extention = filename.substr(filename.rfind('.') + 1, std::string::npos);
+
+	if (deny_list_.find(extention) != deny_list_.end() ||
+		(deny_list_.find("*") != deny_list_.end() &&
+		allow_list_.find(extention) == allow_list_.end())) {
+		throw fastcgi::HttpException(403);
+	}
+
+	std::map<std::string, std::string>::iterator it = typemap_.find(extention);
+
+	std::string content_type = "application/octet";
+
+	try {
+		unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+
+		struct dnet_io_attr io;
+		memset(&io, 0, sizeof(struct dnet_io_attr));
+
+		struct dnet_id tmp;
+
+		if (request->hasArg("from")) {
+			dnet_parse_numeric_id(request->getArg("from"), tmp);
+			memcpy(io.id, tmp.id, sizeof(io.id));
+		}
+
+		if (request->hasArg("to")) {
+			dnet_parse_numeric_id(request->getArg("to"), tmp);
+			memcpy(io.parent, tmp.id, sizeof(io.parent));
+		} else {
+			memset(io.parent, 0xff, sizeof(io.parent));
+		}
+
+		io.flags = ioflags;
+		io.type = column;
+
+		std::vector<std::string> ret;
+
+		for (size_t i = 0; i < groups.size(); ++i) {
+			try {
+				ret = elliptics_node_->read_data_range(io, groups[i], aflags);
+				break;
+			} catch (...) {
+				continue;
+			}
+		}
+
+		if (ret.size() == 0) {
+			std::ostringstream str;
+			str << filename.c_str() << ": READ_RANGE failed in " << groups.size() << " groups";
+			throw std::runtime_error(str.str());
+		}
+
+		std::string result;
+
+		for (size_t i = 0; i < ret.size(); ++i) {
+			result += ret[i];
+		}
+
+		request->setStatus(200);
+		request->setContentType(content_type);
+		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
+		request->write(result.data(), result.size());
+	}
+	catch (const std::exception &e) {
+		log()->error("%s: READ_RANGE failed: %s", filename.c_str(), e.what());
+		request->setStatus(404);
+	}
+	catch (...) {
+		log()->error("%s: READ_RANGE failed", filename.c_str());
+		request->setStatus(404);
+	}
+}
+
+void
 EllipticsProxy::getHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
@@ -670,7 +767,17 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		uint64_t offset = request->hasArg("offset") ? boost::lexical_cast<uint64_t>(request->getArg("offset")) : 0;
 		uint64_t size = request->hasArg("size") ? boost::lexical_cast<uint64_t>(request->getArg("size")) : 0;
 
-		std::string result = elliptics_node_->read_data_wait(filename, offset, size, aflags, ioflags/*, column*/);
+		std::string result;
+
+		if (request->hasArg("id")) {
+			struct dnet_id id;
+			memset(&id, 0, sizeof(id));
+			dnet_parse_numeric_id(request->getArg("id"), id);
+			id.type = column;
+			result = elliptics_node_->read_data_wait(id, offset, size, aflags, ioflags);
+		} else {
+			result = elliptics_node_->read_data_wait(filename, offset, size, aflags, ioflags, column);
+		}
 
 		uint64_t ts = 0;
 		if (request->hasArg("embed") || request->hasArg("embed_timestamp")) {
@@ -805,6 +912,36 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 }
 
 void
+EllipticsProxy::dnet_parse_numeric_id(const std::string &value, struct dnet_id &id)
+{
+	unsigned char ch[5];
+	unsigned int i, len = value.size();
+	const char *ptr = value.data();
+
+	memset(id.id, 0, DNET_ID_SIZE);
+
+	if (len/2 > DNET_ID_SIZE)
+		len = DNET_ID_SIZE * 2;
+
+	ch[0] = '0';
+	ch[1] = 'x';
+	ch[4] = '\0';
+	for (i=0; i<len / 2; i++) {
+		ch[2] = ptr[2*i + 0];
+		ch[3] = ptr[2*i + 1];
+
+		id.id[i] = (unsigned char)strtol((const char *)ch, NULL, 16);
+	}
+
+	if (len & 1) {
+		ch[2] = ptr[2*i + 0];
+		ch[3] = '0';
+
+		id.id[i] = (unsigned char)strtol((const char *)ch, NULL, 16);
+	}
+}
+
+void
 EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	if (elliptics_node_->state_num() < state_num_) {
 		request->setStatus(403);
@@ -815,6 +952,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	struct timespec ts;
 	ts.tv_sec = request->hasArg("timestamp") ? boost::lexical_cast<uint64_t>(request->getArg("timestamp")) : 0;
 	ts.tv_nsec = 0;
+
+	struct dnet_id id;
+	memset(&id, 0, sizeof(id));
 
 	unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
 	unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
@@ -866,23 +1006,26 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			content.append(chunk.first, chunk.second);
 		}
 
-		struct dnet_id id;
-		memset(&id, 0, sizeof (id));
-
-		elliptics_node_->transform(filename, id);
-
 		int result;
 
-/*		if (request->hasArg("prepare")) {
-			uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
-			result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
-		} if (request->hasArg("commit")) {
-			result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
-		} if (request->hasArg("plain_write")) {
-			result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
-		} else {*/
-			result = elliptics_node_->write_data_wait(filename, content);
-//		}
+		id.type = column;
+		if (request->hasArg("id")) {
+			dnet_parse_numeric_id(request->getArg("id"), id);
+			result = elliptics_node_->write_data_wait(id, content, offset, aflags, ioflags);
+		} else {
+			elliptics_node_->transform(filename, id);
+
+			if (request->hasArg("prepare")) {
+				uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
+				result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
+			} if (request->hasArg("commit")) {
+				result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
+			} if (request->hasArg("plain_write")) {
+				result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+			} else {
+				result = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+			}
+		}
 
 		if (result == 0) {
 			log()->error("can not write file %s", filename.c_str());
@@ -890,7 +1033,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		struct dnet_id row;	
+		struct dnet_id row;
 		char id_str[2 * DNET_ID_SIZE + 1];
 		char crc_str[2 * DNET_ID_SIZE + 1];
 
@@ -905,6 +1048,19 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			"\" crc=\"" << crc_str << "\" groups=\"" << groups.size() <<
 			"\" size=\"" << content.length() << "\">\n";
 
+		if (column != EBLOB_TYPE_DATA) {
+			ostr << "<written>" << result << "</written>\n" <<
+				"<!-- PLEASE NOTE THAT COLUMN WRITES DO NOT UPDATE METADATA AS " <<
+				"WELL AS DO NOT CHECK NUMBER OF WRITTEN COPIES -->\n</post>";
+			std::string response = ostr.str();
+
+			request->setStatus(200);
+			request->write(response.c_str(), response.length());
+			return;
+		}
+
+		elliptics_node_->write_metadata(id, filename, groups, ts);
+
 		std::vector<int> temp_groups;
 		if (replication_count != 0 && groups.size() != groups_.size()) {
 			for (std::size_t i = 0; i < groups_.size(); ++i) {
@@ -917,8 +1073,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		int written = 0;
 		for (int i = 0; i < (int)groups.size(); ++i) {
 			std::string lookup;
-			elliptics_callback c;
+			zbr::elliptics_callback c;
 			id.group_id = groups[i];
+			id.type = column;
 			try {
 				elliptics_node_->lookup(id, c);
 				lookup = c.wait();
@@ -936,16 +1093,18 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 					elliptics_node_->add_groups(upload_group);
 
-					int temp_res = elliptics_node_->write_data_wait(filename, content);
+					int temp_res = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
 					if (!temp_res) {
 						temp_groups.erase(it);
 						continue;
 					}
 
 					id.group_id = *it;
+					id.type = column;
 					try {
-						elliptics_node_->lookup(id, c);
-						lookup = c.wait();
+						zbr::elliptics_callback local_c;
+						elliptics_node_->lookup(id, local_c);
+						lookup = local_c.wait();
 
 						groups[i] = *it;
 						temp_groups.erase(it);
@@ -993,6 +1152,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		if (replication_count != 0 && written < replication_count) {
 			try {
+				elliptics_node_->add_groups(groups_);
 				elliptics_node_->remove(filename);
 				request->setStatus(410);
 			}
@@ -1054,7 +1214,31 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 
 	try {
 		elliptics_node_->add_groups(groups);
-		elliptics_node_->remove(filename);
+		if (request->hasArg("id")) {
+			int error = -1;
+			struct dnet_id id;
+			memset(&id, 0, sizeof(id));
+
+			dnet_parse_numeric_id(request->getArg("id"), id);
+
+			for (size_t i = 0; i < groups.size(); ++i) {
+				id.group_id = groups[i];
+				try {
+					elliptics_node_->remove(id);
+					error = 0;
+				} catch (const std::exception &e) {
+					log()->error("can not delete file %s in group %d: %s", filename.c_str(), groups[i], e.what());
+				}
+			}
+
+			if (error) {
+				std::ostringstream str;
+				str << dnet_dump_id(&id) << ": REMOVE failed";
+				throw std::runtime_error(str.str());
+			}
+		} else {
+			elliptics_node_->remove(filename);
+		}
 		elliptics_node_->add_groups(groups_);
 		request->setStatus(200);
 	}
