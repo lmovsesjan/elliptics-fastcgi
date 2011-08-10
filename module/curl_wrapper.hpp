@@ -25,8 +25,8 @@
 #include <curl/curl.h>
 #include <openssl/crypto.h>
 
-#include "yandex/resource.hpp"
-#include "yandex/http/writer.hpp"
+#include "resource.hpp"
+#include "writer.hpp"
 
 namespace yandex {
 namespace common {

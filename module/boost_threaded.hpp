@@ -8,9 +8,9 @@
 #include <boost/thread/condition.hpp>
 #include <boost/function.hpp>
 
-#include "yandex/resource.hpp"
-#include "yandex/threads/scoped_lock.hpp"
-#include "yandex/threads/threading_traits.hpp"
+#include "resource.hpp"
+#include "scoped_lock.hpp"
+#include "threading_traits.hpp"
 
 namespace yandex {
 namespace common {
