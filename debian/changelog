@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-19) unstable; urgency=low
+
+  * new zbr's patches
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Wed, 17 Aug 2011 18:22:44 +0400
+
 elliptics-fastcgi (1.1-18) unstable; urgency=low
 
   * fixed distribution

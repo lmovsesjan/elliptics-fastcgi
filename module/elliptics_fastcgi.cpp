@@ -789,6 +789,15 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 
 				dnet_common_convert_embedded(e);
 
+				if (size < sizeof(struct dnet_common_embed)) {
+					std::ostringstream str;
+					str << filename << ": offset: " << offset << ", size: " << size << ": invalid size";
+					throw std::runtime_error(str.str());
+				}
+
+				offset += sizeof(struct dnet_common_embed);
+				size -= sizeof(struct dnet_common_embed);
+
 				if (size < e->size + sizeof (struct dnet_common_embed)) {
 					break;
 				}
@@ -798,9 +807,6 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 
 					ts = dnet_bswap64(ptr[0]);
 				}
-
-				offset += sizeof(struct dnet_common_embed);
-				size -= sizeof(struct dnet_common_embed);
 
 				if (e->type == DNET_FCGI_EMBED_DATA) {
 					size = e->size;
@@ -1006,12 +1012,13 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			content.append(chunk.first, chunk.second);
 		}
 
-		int result;
+		int result = 0;
+		std::string lookup;
 
 		id.type = column;
 		if (request->hasArg("id")) {
 			dnet_parse_numeric_id(request->getArg("id"), id);
-			result = elliptics_node_->write_data_wait(id, content, offset, aflags, ioflags);
+			lookup = elliptics_node_->write_data_wait(id, content, offset, aflags, ioflags);
 		} else {
 			elliptics_node_->transform(filename, id);
 
@@ -1023,11 +1030,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			} if (request->hasArg("plain_write")) {
 				result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
 			} else {
-				result = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+				lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
 			}
 		}
 
-		if (result == 0) {
+		if ((result == 0) && (lookup.size() == 0)) {
 			log()->error("can not write file %s", filename.c_str());
 			request->setStatus(400);
 			return;
@@ -1071,66 +1078,16 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		}
 
 		int written = 0;
-		for (int i = 0; i < (int)groups.size(); ++i) {
-			std::string lookup;
-			zbr::elliptics_callback c;
-			id.group_id = groups[i];
-			id.type = column;
-			try {
-				elliptics_node_->lookup(id, c);
-				lookup = c.wait();
-			}
-			catch (...) {
-				if (replication_count == 0) {
-					continue;
-				}
+		while (!written || written < replication_count) {
+			long size = lookup.size();
+			char *data = (char *)lookup.data();
+			long min_size = sizeof(struct dnet_cmd) +
+					sizeof(struct dnet_addr) +
+					sizeof(struct dnet_attr) +
+					sizeof(struct dnet_addr_attr) +
+					sizeof(struct dnet_file_info);
 
-				bool uploaded = false;
-
-				for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
-					std::vector<int> upload_group;
-					upload_group.push_back(*it);
-
-					elliptics_node_->add_groups(upload_group);
-
-					int temp_res = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
-					if (!temp_res) {
-						temp_groups.erase(it);
-						continue;
-					}
-
-					id.group_id = *it;
-					id.type = column;
-					try {
-						zbr::elliptics_callback local_c;
-						elliptics_node_->lookup(id, local_c);
-						lookup = local_c.wait();
-
-						groups[i] = *it;
-						temp_groups.erase(it);
-
-						uploaded = true;
-
-						break;
-					}
-					catch (...) {
-						temp_groups.erase(it);
-						continue;
-					}
-				}
-
-				if (!uploaded) {
-					continue;
-				}
-			}
-
-			if (lookup.size() > (sizeof(struct dnet_cmd) +
-					     sizeof(struct dnet_addr) +
-					     sizeof(struct dnet_attr) +
-					     sizeof(struct dnet_addr_attr) +
-					     sizeof(struct dnet_file_info))) {
-				const void *data = lookup.data();
-
+			while (size > min_size) {
 				struct dnet_addr *addr = (struct dnet_addr *)data;
 				struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
 				struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
@@ -1143,10 +1100,30 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
 
 				ostr << "<complete addr=\"" << addr_dst << "\" path=\"" <<
-					(char *)(info + 1) << "\" group=\"" << groups[i] <<
-					"\" status=\"0\"/>\n";
+					(char *)(info + 1) << "\" group=\"" << cmd->id.group_id <<
+					"\" status=\"" << cmd->status << "\"/>\n";
 
 				++written;
+
+				data += min_size + info->flen;
+				size -= min_size + info->flen;
+			}
+
+			if (written && written >= replication_count)
+				break;
+
+			for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
+				std::vector<int> upload_group;
+				upload_group.push_back(*it);
+
+				try {
+					elliptics_node_->add_groups(upload_group);
+					lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+					temp_groups.erase(it);
+					break;
+				} catch (...) {
+					continue;
+				}
 			}
 		}
 
