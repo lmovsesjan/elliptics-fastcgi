@@ -1066,8 +1066,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		elliptics_node_->write_metadata(id, filename, groups, ts);
-
 		std::vector<int> temp_groups;
 		if (replication_count != 0 && groups.size() != groups_.size()) {
 			for (std::size_t i = 0; i < groups_.size(); ++i) {
@@ -1078,6 +1076,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		}
 
 		int written = 0;
+		std::vector<int> upload_group;
 		while (!written || written < replication_count) {
 			long size = lookup.size();
 			char *data = (char *)lookup.data();
@@ -1109,11 +1108,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				size -= min_size + info->flen;
 			}
 
-			if (written && written >= replication_count)
+			if (written && written >= replication_count) {
 				break;
+			}
 
 			for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
-				std::vector<int> upload_group;
 				upload_group.push_back(*it);
 
 				try {
@@ -1139,7 +1138,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
-		elliptics_node_->write_metadata(id, filename, groups, ts);
+		elliptics_node_->write_metadata(id, filename, upload_group, ts);
 
 		elliptics_node_->add_groups(groups_);
 
