@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-21) unstable; urgency=low
+
+  * toshik's patches
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Tue, 06 Sep 2011 16:36:13 +0400
+
 elliptics-fastcgi (1.1-20) unstable; urgency=low
 
   * fixed metadata writing

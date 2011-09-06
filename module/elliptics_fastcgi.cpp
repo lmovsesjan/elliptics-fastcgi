@@ -1098,6 +1098,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				char addr_dst[512];
 				dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
 
+				upload_group.push_back(cmd->id.group_id);
+
 				ostr << "<complete addr=\"" << addr_dst << "\" path=\"" <<
 					(char *)(info + 1) << "\" group=\"" << cmd->id.group_id <<
 					"\" status=\"" << cmd->status << "\"/>\n";
@@ -1113,8 +1115,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 
 			for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
-				upload_group.push_back(*it);
-
 				try {
 					elliptics_node_->add_groups(upload_group);
 					lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
