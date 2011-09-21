@@ -1,3 +1,10 @@
+elliptics-fastcgi (1.1-22) unstable; urgency=low
+
+  * Added "lastest" flag to "get" handler
+  * Fixed metadata groups generation
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Wed, 21 Sep 2011 16:33:59 +0400
+
 elliptics-fastcgi (1.1-21) unstable; urgency=low
 
   * toshik's patches
