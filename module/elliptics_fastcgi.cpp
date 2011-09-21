@@ -766,6 +766,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
 		uint64_t offset = request->hasArg("offset") ? boost::lexical_cast<uint64_t>(request->getArg("offset")) : 0;
 		uint64_t size = request->hasArg("size") ? boost::lexical_cast<uint64_t>(request->getArg("size")) : 0;
+		int latest = request->hasArg("latest") ? boost::lexical_cast<int>(request->getArg("latest")) : 0;
 
 		std::string result;
 
@@ -774,9 +775,15 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			memset(&id, 0, sizeof(id));
 			dnet_parse_numeric_id(request->getArg("id"), id);
 			id.type = column;
-			result = elliptics_node_->read_data_wait(id, offset, size, aflags, ioflags);
+			if (latest)
+				result = elliptics_node_->read_latest(id, offset, size, aflags, ioflags);
+			else
+				result = elliptics_node_->read_data_wait(id, offset, size, aflags, ioflags);
 		} else {
-			result = elliptics_node_->read_data_wait(filename, offset, size, aflags, ioflags, column);
+			if (latest)
+				result = elliptics_node_->read_latest(filename, offset, size, aflags, ioflags, column);
+			else
+				result = elliptics_node_->read_data_wait(filename, offset, size, aflags, ioflags, column);
 		}
 
 		uint64_t ts = 0;
@@ -1109,8 +1116,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				data += min_size + info->flen;
 				size -= min_size + info->flen;
 			}
+			lookup.clear();
 
-			if (written && written >= replication_count) {
+			if (temp_groups.size() == 0 || (written && written >= replication_count)) {
 				break;
 			}
 
@@ -1136,6 +1144,10 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				request->setStatus(409);
 			}
 			return;
+		}
+
+		if (replication_count == 0) {
+			upload_group = groups_;
 		}
 
 		elliptics_node_->write_metadata(id, filename, upload_group, ts);
