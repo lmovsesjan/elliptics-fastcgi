@@ -63,6 +63,7 @@ private:
 	void downloadInfoHandler(fastcgi::Request *request);
 	void getHandler(fastcgi::Request *request);
 	void rangeHandler(fastcgi::Request *request);
+	void rangeDeleteHandler(fastcgi::Request *request);
 	void statLogHandler(fastcgi::Request *request);
 	void uploadHandler(fastcgi::Request *request);
 	void deleteHandler(fastcgi::Request *request);
