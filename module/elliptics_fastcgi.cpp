@@ -1131,22 +1131,27 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		std::string lookup;
 
 		id.type = column;
-		if (request->hasArg("id")) {
-			dnet_parse_numeric_id(request->getArg("id"), id);
-			lookup = elliptics_node_->write_data_wait(id, content, offset, aflags, ioflags);
-		} else {
-			elliptics_node_->transform(filename, id);
 
-			if (request->hasArg("prepare")) {
-				uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
-				result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
-			} if (request->hasArg("commit")) {
-				result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
-			} if (request->hasArg("plain_write")) {
-				result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+		try {
+			if (request->hasArg("id")) {
+				dnet_parse_numeric_id(request->getArg("id"), id);
+				lookup = elliptics_node_->write_data_wait(id, content, offset, aflags, ioflags);
 			} else {
-				lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+				elliptics_node_->transform(filename, id);
+
+				if (request->hasArg("prepare")) {
+					uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
+					result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
+				} if (request->hasArg("commit")) {
+					result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
+				} if (request->hasArg("plain_write")) {
+					result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+				} else {
+					lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+				}
 			}
+		}
+		catch (...) {
 		}
 
 		if ((result == 0) && (lookup.size() == 0)) {
