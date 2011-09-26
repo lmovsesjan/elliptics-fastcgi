@@ -211,6 +211,9 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 			else if (request->hasArg("range")) {
 				handler = "range";
 			}
+			else if (request->hasArg("range-delete")) {
+				handler = "range-delete";
+			}
 			else if (request->hasArg("unlink")) {
 				handler = "delete";
 			}
@@ -476,6 +479,7 @@ EllipticsProxy::onLoad() {
 	registerHandler("download-info", &EllipticsProxy::downloadInfoHandler);
 	registerHandler("get", &EllipticsProxy::getHandler);
 	registerHandler("range", &EllipticsProxy::rangeHandler);
+	registerHandler("range-delete", &EllipticsProxy::rangeDeleteHandler);
 	registerHandler("stat", &EllipticsProxy::pingHandler);
 	registerHandler("stat_log", &EllipticsProxy::statLogHandler);
 	registerHandler("stat-log", &EllipticsProxy::statLogHandler);
@@ -681,6 +685,13 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 			memset(io.parent, 0xff, sizeof(io.parent));
 		}
 
+		if (request->hasArg("limit_start")) {
+			io.start = boost::lexical_cast<uint64_t>(request->getArg("limit_start"));
+		}
+		if (request->hasArg("limit_num")) {
+			io.num = boost::lexical_cast<uint64_t>(request->getArg("limit_num"));
+		}
+
 		io.flags = ioflags;
 		io.type = column;
 
@@ -718,6 +729,103 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 	}
 	catch (...) {
 		log()->error("%s: READ_RANGE failed", filename.c_str());
+		request->setStatus(404);
+	}
+}
+
+void
+EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
+	std::string filename = request->hasArg("name") ? request->getArg("name") :
+		request->getScriptName().substr(sizeof ("/range/") - 1, std::string::npos);
+
+log()->error("rs: REMOVE_RANGE", filename.c_str());
+	std::vector<int> groups;
+	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+		try {
+			groups = getMetaInfo(filename);
+		}
+		catch (...) {
+			groups = getGroups(request);
+		}
+	}
+	else {
+		groups = getGroups(request);
+	}
+
+	std::string extention = filename.substr(filename.rfind('.') + 1, std::string::npos);
+
+	if (deny_list_.find(extention) != deny_list_.end() ||
+		(deny_list_.find("*") != deny_list_.end() &&
+		allow_list_.find(extention) == allow_list_.end())) {
+		throw fastcgi::HttpException(403);
+	}
+
+	std::map<std::string, std::string>::iterator it = typemap_.find(extention);
+
+	std::string content_type = "application/octet";
+
+	try {
+		unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+
+		struct dnet_io_attr io;
+		memset(&io, 0, sizeof(struct dnet_io_attr));
+
+		struct dnet_id tmp;
+
+		if (request->hasArg("from")) {
+			dnet_parse_numeric_id(request->getArg("from"), tmp);
+			memcpy(io.id, tmp.id, sizeof(io.id));
+		}
+
+		if (request->hasArg("to")) {
+			dnet_parse_numeric_id(request->getArg("to"), tmp);
+			memcpy(io.parent, tmp.id, sizeof(io.parent));
+		} else {
+			memset(io.parent, 0xff, sizeof(io.parent));
+		}
+
+		io.flags = ioflags;
+		io.type = column;
+
+		std::vector<struct dnet_io_attr> ret;
+
+		for (size_t i = 0; i < groups.size(); ++i) {
+			try {
+				ret = elliptics_node_->remove_data_range(io, groups[i], aflags);
+				break;
+			} catch (...) {
+				continue;
+			}
+		}
+
+		if (ret.size() == 0) {
+			std::ostringstream str;
+			str << filename.c_str() << ": REMOVE_RANGE failed in " << groups.size() << " groups";
+			throw std::runtime_error(str.str());
+		}
+
+		std::string result;
+		int removed = 0;
+
+		for (size_t i = 0; i < ret.size(); ++i) {
+			removed += ret[i].num;
+		}
+
+		result = boost::lexical_cast<std::string>(removed);
+
+		request->setStatus(200);
+		request->setContentType(content_type);
+		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
+		request->write(result.data(), result.size());
+	}
+	catch (const std::exception &e) {
+		log()->error("%s: REMOVE_RANGE failed: %s", filename.c_str(), e.what());
+		request->setStatus(404);
+	}
+	catch (...) {
+		log()->error("%s: REMOVE_RANGE failed", filename.c_str());
 		request->setStatus(404);
 	}
 }
