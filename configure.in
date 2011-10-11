@@ -27,7 +27,7 @@ AX_BOOST_THREAD
 
 AC_CHECK_FASTCGIDAEMON
 
-AC_CHECK_LIB([elliptics_cpp], [main], [LIBS="$LIBS -lelliptics_cpp"], [LIBS="$LIBS -lelliptics_cpp"])
+AC_CHECK_LIB([elliptics_cpp], [main], [LIBS="$LIBS -L/usr/lib/ -lelliptics_cpp"], [LIBS="$LIBS -lelliptics_cpp"])
 AC_CHECK_LIB([crypto], [main])
 AC_CHECK_LIB([curl], [main])
 
