@@ -9,7 +9,7 @@ URL:		http://www.ioremap.net/projects/elliptics
 Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
-BuildRequires:	fastcgi-daemon2-libs-devel, curl, elliptics-devel, elliptics-c++, libgeobase3-devel, autoconf, automake, libtool, pkgconfig, openssl-devel, boost-devel, curl-devel, eblob-devel
+BuildRequires:	fastcgi-daemon2-libs-devel, curl, elliptics-devel, elliptics-c++-devel, libgeobase3-devel, autoconf, automake, libtool, pkgconfig, openssl-devel, boost-devel, curl-devel, eblob-devel
 
 %description
 Elliptics is one of the best prodution enterprise high scalability and
