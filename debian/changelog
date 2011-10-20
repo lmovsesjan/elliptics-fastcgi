@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.1-24) unstable; urgency=low
+
+  * improved CORS in proxy
+
+ -- Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>  Thu, 20 Oct 2011 13:57:12 +0400
+
 elliptics-fastcgi (1.1-23) unstable; urgency=low
 
   * stupid zbr@ doesn't know anything about exceptions in c++

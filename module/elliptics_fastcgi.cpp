@@ -283,6 +283,7 @@ EllipticsProxy::allowOrigin(fastcgi::Request *request) const {
 		}
 
 		if (allow) {
+			domain = (!request->getHeader("Origin").compare(0, sizeof ("https://") - 1, "https://") ? "https://" : "http://") + domain;
 			request->setHeader("Access-Control-Allow-Origin", domain);
 			return;
 		}
