@@ -1105,7 +1105,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		uploadMetaInfo(groups, filename);
 	}
 
+	log()->debug("request %s initializing data buffer", request->getScriptName().c_str());
+
 	fastcgi::DataBuffer buffer = request->requestBody();
+
+	log()->debug("request %s initialized data buffer", request->getScriptName().c_str());
 
 	try {
 		elliptics_node_->add_groups(groups);
@@ -1132,6 +1136,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		std::string lookup;
 
 		id.type = column;
+
+		log()->debug("request %s data prepared", request->getScriptName().c_str());
 
 		try {
 			if (request->hasArg("id")) {
@@ -1160,6 +1166,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			request->setStatus(400);
 			return;
 		}
+
+		log()->debug("request %s data written", request->getScriptName().c_str());
 
 		struct dnet_id row;
 		char id_str[2 * DNET_ID_SIZE + 1];
@@ -1195,6 +1203,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				}
 			}
 		}
+
+		log()->debug("request %s writing copies", request->getScriptName().c_str());
 
 		int written = 0;
 		std::vector<int> upload_group;
@@ -1260,15 +1270,23 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			return;
 		}
 
+		log()->debug("request %s copies written", request->getScriptName().c_str());
+
 		if (replication_count == 0) {
 			upload_group = groups_;
 		}
 
+		log()->debug("request %s writing metadata", request->getScriptName().c_str());
+
 		elliptics_node_->write_metadata(id, filename, upload_group, ts);
+
+		log()->debug("request %s metadata written", request->getScriptName().c_str());
 
 		elliptics_node_->add_groups(groups_);
 
 		ostr << "<written>" << written << "</written>\n</post>";
+
+		log()->debug("request %s preparing response", request->getScriptName().c_str());
 
 		std::string response = ostr.str();
 
@@ -1279,6 +1297,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		else {
 			request->setStatus(200);
 		}
+
+		log()->debug("request %s response written", request->getScriptName().c_str());
+
 		request->write(response.c_str(), response.length());
 	}
 	catch (const std::exception &e) {
