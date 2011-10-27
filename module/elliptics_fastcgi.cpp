@@ -1171,7 +1171,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				}
 			}
 		}
+		catch (const std::exception &e) {
+			log()->error("bad id transform: %s", e.what());
+		}
 		catch (...) {
+			log()->error("bad id transform: unknown");
 		}
 
 		if ((result == 0) && (lookup.size() == 0)) {
@@ -1199,6 +1203,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			"<post obj=\"" << filename << "\" id=\"" << id_str <<
 			"\" crc=\"" << crc_str << "\" groups=\"" << groups.size() <<
 			"\" size=\"" << content.length() << "\">\n";
+
+		log()->debug("string id %s", id_str);
 
 		if (column != EBLOB_TYPE_DATA) {
 			ostr << "<written>" << result << "</written>\n" <<
@@ -1260,7 +1266,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 			lookup.clear();
 
-			if (temp_groups.size() == 0 || (written && written >= replication_count)) {
+			 if (temp_groups.size() == 0 || (written && written >= replication_count)) {
 				break;
 			}
 
@@ -1324,6 +1330,18 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		}
 		else {
 			request->setStatus(200);
+		}
+
+		char check[DNET_ID_SIZE];
+		memset(check, 0, sizeof (check));
+
+		if (!memcmp(id.id, check, sizeof (check))) {
+			log()->error("POSIBLE ZERO KEY ERROR! handler: %s query: %s replication_count: %d written_copies: %d",
+				request->getScriptName().c_str(),
+				request->getQueryString().c_str(),
+				replication_count,
+				written);
+			throw std::runtime_error("ZERO KEY!");
 		}
 
 		gettimeofday(&stop, NULL);
