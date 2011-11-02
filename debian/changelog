@@ -1,6 +1,6 @@
-elliptics-fastcgi (1:1.1-29) unstable; urgency=low
+elliptics-fastcgi (1.1-29) unstable; urgency=low
 
-  * added Debian epoch to version
+  * version is increased to solve repository problems
 
  -- Anton Kortunov <toshik@yandex-team.ru>  Wed, 02 Nov 2011 17:19:42 +0400
 
