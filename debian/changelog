@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.2-1) unstable; urgency=low
+
+  * Updated configure.in to automatically detect libgeobase
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Wed, 09 Nov 2011 15:28:33 +0300
+
 elliptics-fastcgi (1.2-00) unstable; urgency=low
 
   * version is increased to solve repository problems
