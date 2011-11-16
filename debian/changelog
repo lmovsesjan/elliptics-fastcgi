@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.2-2) unstable; urgency=low
+
+  * count_only parameter is added to range handler
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Wed, 16 Nov 2011 20:38:07 +0400
+
 elliptics-fastcgi (1.2-1) unstable; urgency=low
 
   * Updated configure.in to automatically detect libgeobase

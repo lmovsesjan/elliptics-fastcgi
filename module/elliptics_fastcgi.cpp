@@ -670,6 +670,9 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
 		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
 
+		if (request->hasArg("count_only"))
+			ioflags |= DNET_IO_FLAGS_NODATA;
+
 		struct dnet_io_attr io;
 		memset(&io, 0, sizeof(struct dnet_io_attr));
 
