@@ -219,6 +219,12 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 			else if (request->hasArg("unlink")) {
 				handler = "delete";
 			}
+			else if (request->hasArg("bulk-read")) {
+				handler = "bulk-read";
+			}
+			else if (request->hasArg("bulk-write")) {
+				handler = "bulk-write";
+			}
 			else {
 				if (request->hasArg("name")) {
 					handler = request->getServerPort() == write_port_ ? "upload" : "download-info";
@@ -489,8 +495,8 @@ EllipticsProxy::onLoad() {
 	registerHandler("stat-log", &EllipticsProxy::statLogHandler);
 	registerHandler("upload", &EllipticsProxy::uploadHandler);
 	registerHandler("delete", &EllipticsProxy::deleteHandler);
-	registerHandler("bulk_read", &EllipticsProxy::bulkReadHandler);
-//	registerHandler("bulk_write", &EllipticsProxy::bulkWriteHandler);
+	registerHandler("bulk-read", &EllipticsProxy::bulkReadHandler);
+	registerHandler("bulk-write", &EllipticsProxy::bulkWriteHandler);
 }
 
 void
