@@ -1,3 +1,10 @@
+elliptics-fastcgi (1.2-3) unstable; urgency=low
+
+  * added bulk_read and bulk_write handlers 
+  * fixed dependency on elliptics-regional-module
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Tue, 29 Nov 2011 21:00:45 +0400
+
 elliptics-fastcgi (1.2-2) unstable; urgency=low
 
   * count_only parameter is added to range handler
