@@ -35,6 +35,8 @@
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/tokenizer.hpp>
+#include <boost/scoped_array.hpp>
 
 #include <eblob/blob.h>
 
@@ -487,6 +489,8 @@ EllipticsProxy::onLoad() {
 	registerHandler("stat-log", &EllipticsProxy::statLogHandler);
 	registerHandler("upload", &EllipticsProxy::uploadHandler);
 	registerHandler("delete", &EllipticsProxy::deleteHandler);
+	registerHandler("bulk_read", &EllipticsProxy::bulkReadHandler);
+//	registerHandler("bulk_write", &EllipticsProxy::bulkWriteHandler);
 }
 
 void
@@ -743,7 +747,6 @@ EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/range/") - 1, std::string::npos);
 
-log()->error("rs: REMOVE_RANGE", filename.c_str());
 	std::vector<int> groups;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		try {
@@ -1311,7 +1314,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		log()->debug("request %s writing metadata", request->getScriptName().c_str());
 
-		elliptics_node_->write_metadata(id, filename, upload_group, ts);
+		elliptics_node_->write_metadata(id, filename, upload_group, ts, 0);
 
 		gettimeofday(&stop, NULL);
 
@@ -1425,6 +1428,278 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 	catch (...) {
 		log()->error("can not write file %s", filename.c_str());
 		request->setStatus(400);
+	}
+}
+
+void
+EllipticsProxy::bulkReadHandler(fastcgi::Request *request) {
+
+	typedef boost::char_separator<char> Separator;
+	typedef boost::tokenizer<Separator> Tokenizer;
+
+	std::vector<int> groups;
+	groups = getGroups(request);
+
+	std::string content_type = "application/octet";
+
+	try {
+		unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+		//unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+		//int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+		int group_id = request->hasArg("group_id") ? boost::lexical_cast<int>(request->getArg("group_id")) : 0;
+		std::string key_type = request->hasArg("key_type") ? request->getArg("key_type") : "name";
+
+		if (group_id <= 0) {
+			std::ostringstream str;
+			str << "BULK_READ failed: group_id is mandatory and it should be > 0";
+			throw std::runtime_error(str.str());
+		}
+
+		std::vector<std::string> ret;
+
+		if (key_type.compare("name") == 0) {
+			// body of POST request contains lines with file names
+			std::vector<std::string> keys;
+
+			// First, concatenate it
+			std::string content;
+			request->requestBody().toString(content);
+
+			/*content.reserve(buffer.size());
+			for (fastcgi::DataBuffer::SegmentIterator it = buffer.begin(), end = buffer.end(); it != end; ++it) {
+				std::pair<char*, boost::uint64_t> chunk = *it;
+				content.append(chunk.first, chunk.second);
+			}*/
+
+			// Then parse to extract key names
+			Separator sep(" \n");
+			Tokenizer tok(content, sep);
+
+			for (Tokenizer::iterator it = tok.begin(), end = tok.end(); end != it; ++it) {
+				log()->debug("BULK_READ: adding key %s", it->c_str());
+				keys.push_back(*it);
+			}
+
+			// Finally, call bulk_read method
+			ret = elliptics_node_->bulk_read(keys, group_id, aflags);
+
+		} else {
+			std::ostringstream str;
+			str << "BULK_READ failed: unsupported key type " << key_type;
+			throw std::runtime_error(str.str());
+		}
+
+		if (ret.size() == 0) {
+			std::ostringstream str;
+			str << "BULK_READ failed: zero size reply";
+			throw std::runtime_error(str.str());
+		}
+
+		std::string result;
+
+		for (size_t i = 0; i < ret.size(); ++i) {
+			result += ret[i];
+		}
+
+		request->setStatus(200);
+		request->setContentType(content_type);
+		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
+		request->write(result.data(), result.size());
+	}
+	catch (const std::exception &e) {
+		log()->error("BULK_READ failed: %s", e.what());
+		request->setStatus(404);
+	}
+	catch (...) {
+		log()->error("BULK_READ failed");
+		request->setStatus(404);
+	}
+}
+
+struct bulk_file_info_single {
+	std::string addr;
+	std::string path;
+	int group;
+	int status;
+};
+
+struct bulk_file_info {
+	char id[2 * DNET_ID_SIZE + 1];
+	char crc[2 * DNET_ID_SIZE + 1];
+	boost::uint64_t size;
+
+	std::vector<struct bulk_file_info_single> groups;
+};
+	
+
+void
+EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
+
+	std::vector<int> groups;
+	groups = getGroups(request);
+
+	std::string content_type = "application/octet";
+
+	try {
+		unsigned int aflags = request->hasArg("aflags") ? boost::lexical_cast<unsigned int>(request->getArg("aflags")) : 0;
+		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
+		int column = request->hasArg("column") ? boost::lexical_cast<int>(request->getArg("column")) : 0;
+		int group_id = request->hasArg("group_id") ? boost::lexical_cast<int>(request->getArg("group_id")) : 0;
+		std::string key_type = request->hasArg("key_type") ? request->getArg("key_type") : "id";
+
+		if (group_id <= 0) {
+			std::ostringstream str;
+			str << "BULK_WRITE failed: group_id is mandatory and it should be > 0";
+			throw std::runtime_error(str.str());
+		}
+
+		std::string lookup;
+		std::ostringstream ostr;
+		std::map<std::string, struct bulk_file_info> results;
+
+		if (key_type.compare("id") == 0) {
+
+			std::vector<struct dnet_io_attr> ios;
+			struct dnet_io_attr io;
+			std::vector<std::string> data;
+			std::string empty;
+			boost::uint64_t pos = 0, data_readed;
+
+			fastcgi::DataBuffer buffer = request->requestBody();
+
+			struct dnet_id row;
+			std::string id;
+
+			while (pos < buffer.size()) {
+				memset(&io, 0, sizeof(io));
+				io.flags = ioflags;
+				io.type = column;
+
+				data_readed = buffer.read(pos, (char *)io.id, DNET_ID_SIZE);
+				if (data_readed != DNET_ID_SIZE) {
+					std::ostringstream str;
+					str << "BULK_WRITE failed: read " << data_readed << ", " << DNET_ID_SIZE << " bytes needed ";
+					throw std::runtime_error(str.str());
+				}
+				pos += DNET_ID_SIZE;
+
+				data_readed = buffer.read(pos, (char *)&io.size, sizeof(io.size));
+				if (data_readed != sizeof(io.size)) {
+					std::ostringstream str;
+					str << "BULK_WRITE failed: read " << data_readed << ", " << sizeof(io.size) << " bytes needed ";
+					throw std::runtime_error(str.str());
+				}
+				if (io.size > (buffer.size() - pos)) {
+					std::ostringstream str;
+					str << dnet_dump_id_str(io.id) << ": BULK_WRITE failed: size of data is " << io.size 
+						<< " but buffer size is " << (buffer.size() - pos);
+				}
+				pos += sizeof(io.size);
+
+				boost::scoped_array<char> tmp_buffer(new char[io.size]);
+				data_readed = buffer.read(pos, tmp_buffer.get(), io.size);
+				if (data_readed != io.size) {
+					std::ostringstream str;
+					str << dnet_dump_id_str(io.id) << ": BULK_WRITE failed: read " << data_readed << ", " << io.size << " bytes needed ";
+					throw std::runtime_error(str.str());
+				}
+				pos += io.size;
+
+				ios.push_back(io);
+				data.push_back(empty);
+				data.back().assign(tmp_buffer.get(), io.size);
+
+				struct bulk_file_info file_info;
+
+				elliptics_node_->transform(tmp_buffer.get(), row);
+				dnet_dump_id_len_raw(io.id, DNET_ID_SIZE, file_info.id);
+				dnet_dump_id_len_raw(row.id, DNET_ID_SIZE, file_info.crc);
+				file_info.size = io.size;
+
+				id.assign(file_info.id);
+				results[id] = file_info;
+			}
+
+			lookup = elliptics_node_->bulk_write(ios, data, aflags);
+
+		} else {
+			std::ostringstream str;
+			str << "BULK_WRITE failed: unsupported key type " << key_type;
+			throw std::runtime_error(str.str());
+		}
+
+
+		ostr << "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+
+		long size = lookup.size();
+		char *data = (char *)lookup.data();
+		long min_size = sizeof(struct dnet_cmd) +
+				sizeof(struct dnet_addr) +
+				sizeof(struct dnet_attr) +
+				sizeof(struct dnet_addr_attr) +
+				sizeof(struct dnet_file_info);
+
+		char addr_dst[512];
+		char id_str[2 * DNET_ID_SIZE + 1];
+		struct bulk_file_info_single file_info;
+		std::string id;
+
+		while (size > min_size) {
+			struct dnet_addr *addr = (struct dnet_addr *)data;
+			struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
+			struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
+			struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+
+			struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
+			dnet_convert_file_info(info);
+
+			dnet_server_convert_dnet_addr_raw(addr, addr_dst, sizeof (addr_dst) - 1);
+
+			dnet_dump_id_len_raw(cmd->id.id, DNET_ID_SIZE, id_str);
+			id.assign(id_str);
+
+			file_info.addr.assign(addr_dst);
+			file_info.path.assign((char *)(info + 1));
+			file_info.group = cmd->id.group_id;
+			file_info.status = cmd->status;
+
+			results[id].groups.push_back(file_info);
+
+
+			data += min_size + info->flen;
+			size -= min_size + info->flen;
+		}
+		lookup.clear();
+
+		for (std::map<std::string, struct bulk_file_info>::iterator it = results.begin(); it != results.end(); it++) {
+			ostr << "<post obj=\"\" id=\"" << it->first <<
+				"\" crc=\"" << it->second.crc << "\" groups=\"" << groups.size() <<
+				"\" size=\"" << it->second.size << "\">\n" <<
+				"	<written>\n";
+
+			for (std::vector<struct bulk_file_info_single>::iterator gr_it = it->second.groups.begin();
+					gr_it != it->second.groups.end(); gr_it++) {
+				ostr << "		<complete addr=\"" << gr_it->addr << "\" path=\"" <<
+					gr_it->path << "\" group=\"" << gr_it->group <<
+					"\" status=\"" << gr_it->status << "\"/>\n";
+			}
+			ostr << "	</written>\n</post>\n";
+		}
+
+		std::string result = ostr.str();
+
+		request->setStatus(200);
+		request->setContentType(content_type);
+		request->setHeader("Content-Length", boost::lexical_cast<std::string>(result.length()));
+		request->write(result.data(), result.size());
+	}
+	catch (const std::exception &e) {
+		log()->error("BULK_WRITE failed: %s", e.what());
+		request->setStatus(404);
+	}
+	catch (...) {
+		log()->error("BULK_WRITE failed");
+		request->setStatus(404);
 	}
 }
 
