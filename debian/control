@@ -15,6 +15,7 @@ Package: elliptics-fastcgi
 Architecture: any
 Depends: ${shlibs:Depends},
  libfastcgi2-syslog,
+ elliptics-regional-module (>= 1.0-13),
  fastcgi-daemon2,
  fastcgi-daemon2-init
 Description: Elliptics is one of the best prodution enterprise high scalability and availability system, wrote by one
