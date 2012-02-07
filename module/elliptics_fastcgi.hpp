@@ -118,6 +118,7 @@ private:
 	int                                         base_port_;
 	int                                         write_port_;
 	int                                         directory_bit_num_;
+	int                                         eblob_style_path_;
 	bool                                        use_cookie_;
 	std::string                                 sign_key_;
 	std::string                                 cookie_name_;

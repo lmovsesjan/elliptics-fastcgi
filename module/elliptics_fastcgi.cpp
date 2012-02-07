@@ -347,6 +347,7 @@ EllipticsProxy::onLoad() {
 	base_port_ = config->asInt(path + "/dnet/base-port");
 	write_port_ = config->asInt(path + "/dnet/write-port", 9000);
 	directory_bit_num_ = config->asInt(path + "/dnet/directory-bit-num");
+        eblob_style_path_ = config->asInt(path + "/dnet/eblob_style_path", 0);
 
 	replication_count_ = config->asInt(path + "/dnet/replication-count", 0);
 
@@ -519,6 +520,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
 
 	std::vector<int> groups;
+        std::string path;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		try {
 			groups = getMetaInfo(filename);
@@ -543,6 +545,8 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
 		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
 		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+		struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
+		dnet_convert_file_info(info);
 
 		char hbuf[NI_MAXHOST];
 		memset(hbuf, 0, NI_MAXHOST);
@@ -624,8 +628,16 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 #endif
 
-		result += "<host>" + std::string(hbuf) + "</host><path>/" + boost::lexical_cast<std::string>(port - base_port_) +
-			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
+		if (eblob_style_path_) {
+			path = std::string((char *)(info + 1)) + ":" + boost::lexical_cast<std::string>(info->offset) + 
+        	                                                 ":" +  boost::lexical_cast<std::string>(info->size);
+		} else {
+			path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' + hex_dir + '/' + id;
+		}
+
+		result += "<host>" + std::string(hbuf) + "</host><path>" + path + "</path>" + "<ts>" + tsstr + "</ts>";
+//		result += "<host>" + std::string(hbuf) + "</host><path>/" + boost::lexical_cast<std::string>(port - base_port_) +
+//			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
 #ifdef HAVE_GEOBASE
 		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
 #endif
