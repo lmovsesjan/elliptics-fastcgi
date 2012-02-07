@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.2-4) unstable; urgency=low
+
+  * added eblob_style_path config option 
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Tue, 07 Feb 2012 17:11:56 +0400
+
 elliptics-fastcgi (1.2-3) unstable; urgency=low
 
   * added bulk_read and bulk_write handlers 
