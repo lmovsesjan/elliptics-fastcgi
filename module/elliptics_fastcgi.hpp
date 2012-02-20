@@ -51,7 +51,8 @@ namespace elliptics {
 struct MetabaseRequest {
 	int		groups_num;
 	uint64_t	stamp;
-	MSGPACK_DEFINE(groups_num, stamp);
+	std::vector<uint8_t> id;
+	MSGPACK_DEFINE(groups_num, stamp, id);
 };
 
 struct MetabaseResponse {
@@ -111,7 +112,7 @@ private:
 	std::pair<std::string, time_t> secret(fastcgi::Request *request) const;
 
 #ifdef HAVE_METABASE
-	std::vector<int> getMetabaseGroups(fastcgi::Request *request, size_t count = 0);
+	std::vector<int> getMetabaseGroups(fastcgi::Request *request, size_t count, struct dnet_id &id);
 #endif /* HAVE_METABASE */
 
 public:

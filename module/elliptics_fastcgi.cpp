@@ -1181,7 +1181,13 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	std::vector<int> groups = getGroups(request, replication_count);
 #ifdef HAVE_METABASE
 	if (metabase_socket_.get()) {
-		std::vector<int> meta_groups = getMetabaseGroups(request, replication_count);
+		if (request->hasArg("id")) {
+			dnet_parse_numeric_id(request->getArg("id"), id);
+		} else {
+			elliptics_node_->transform(filename, id);
+		}
+
+		std::vector<int> meta_groups = getMetabaseGroups(request, replication_count, id);
 		if (meta_groups.size() > 0) {
 			groups = meta_groups;
 			use_metabase = 1;
@@ -1919,7 +1925,7 @@ EllipticsProxy::refresh() {
 
 #ifdef HAVE_METABASE
 std::vector<int> 
-EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count) {
+EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count, struct dnet_id &id) {
 	std::vector<int> groups;
 	int rc = 0;
 
@@ -1940,6 +1946,7 @@ EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count) {
 	MetabaseRequest req;
 	req.groups_num = count;
 	req.stamp = ++metabase_current_stamp_;
+	req.id.assign(id.id, id.id+DNET_ID_SIZE);
 
 	msgpack::sbuffer buf;
 	msgpack::pack(buf, req);
