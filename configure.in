@@ -34,6 +34,13 @@ AC_CHECK_LIB([crypto], [main])
 AC_CHECK_LIB([curl], [main])
 AC_CHECK_LIB([geobase3], [main], [AC_DEFINE(HAVE_GEOBASE, 1, [Have libgeobase3]) AM_CONDITIONAL(HAVE_GEOBASE, true)])
 
+AC_CHECK_LIB([zmq], [main], [have_libzmq="yes"])
+AC_CHECK_LIB([msgpack], [main], [have_msgpack="yes"])
+
+AS_IF([test "x$have_libzmq" = "xyes" -a "x$have_msgpack" = "xyes" ], 
+	[AC_DEFINE(HAVE_METABASE, 1, [Have metabase support])
+	 LIBS="-lzmq -lmsgpack  $LIBS"])
+
 AC_CONFIG_FILES([Makefile
 	module/Makefile])
 

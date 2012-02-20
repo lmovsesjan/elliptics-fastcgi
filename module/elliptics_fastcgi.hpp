@@ -18,6 +18,8 @@
 #ifndef _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 #define _ELLIPTICS_FASTCGI_HPP_INCLUDED_
 
+#include "settings.h"
+
 #include <map>
 #include <set>
 #include <string>
@@ -30,7 +32,12 @@
 #ifdef HAVE_GEOBASE
 #include <geobase3/lookup.hpp>
 #include <fastcgi-elliptics/regional_module.hpp>
-#endif
+#endif /* HAVE_GEOBASE */
+
+#ifdef HAVE_METABASE
+#include <zmq.hpp>
+#include <msgpack.hpp>
+#endif /* HAVE_METABASE */
 
 #include <boost/tokenizer.hpp>
 
@@ -40,6 +47,18 @@
 #include "refresher.hpp"
 
 namespace elliptics {
+
+struct MetabaseRequest {
+	int		groups_num;
+	uint64_t	stamp;
+	MSGPACK_DEFINE(groups_num, stamp);
+};
+
+struct MetabaseResponse {
+	std::vector<int> groups;
+	uint64_t	stamp;
+	MSGPACK_DEFINE(groups, stamp);
+};
 
 class EllipticsProxy;
 
@@ -84,12 +103,16 @@ private:
 
 #ifdef HAVE_GEOBASE
 	void refresh();
-#endif
+#endif /* HAVE_GEOBASE */
 
 	static size_t paramsNum(Tokenizer &tok);
 	static std::string md5(const std::string &source);
 
 	std::pair<std::string, time_t> secret(fastcgi::Request *request) const;
+
+#ifdef HAVE_METABASE
+	std::vector<int> getMetabaseGroups(fastcgi::Request *request, size_t count = 0);
+#endif /* HAVE_METABASE */
 
 public:
 	virtual void onLoad();
@@ -106,9 +129,16 @@ private:
 	std::string                                 filename_;
 	time_t                                      last_modified_;
 	RegionalModule*                             regional_module_;
-#endif
-	boost::shared_ptr<zbr::elliptics_log_file>       elliptics_log_;
-	boost::shared_ptr<zbr::elliptics_node>           elliptics_node_;
+#endif /* HAVE_GEOBASE */
+#ifdef HAVE_METABASE
+	std::auto_ptr<zmq::context_t>               metabase_context_;
+	std::auto_ptr<zmq::socket_t>                metabase_socket_;
+	int                                         metabase_timeout_;
+	int                                         metabase_usage_;
+	uint64_t                                    metabase_current_stamp_;
+#endif /* HAVE_METABASE */
+	boost::shared_ptr<zbr::elliptics_log_file>  elliptics_log_;
+	boost::shared_ptr<zbr::elliptics_node>      elliptics_node_;
 	std::map<std::string, std::string>          typemap_;
 	std::vector<std::string>                    remotes_;
 	std::vector<int>                            groups_;

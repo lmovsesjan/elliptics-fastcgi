@@ -50,6 +50,13 @@ enum dnet_common_embed_types {
 	DNET_FCGI_EMBED_TIMESTAMP,
 };
 
+enum dnet_metabase_type {
+	DNET_FCGI_META_NONE = 0,
+	DNET_FCGI_META_OPTIONAL,
+	DNET_FCGI_META_NORMAL,
+	DNET_FCGI_META_MANDATORY,
+};
+
 struct dnet_common_embed {
 	uint64_t		size;
 	uint32_t		type;
@@ -473,6 +480,52 @@ EllipticsProxy::onLoad() {
 
 	metabase_write_addr_ = config->asString(path + "/dnet/metabase/write-addr", "");
 	metabase_read_addr_ = config->asString(path + "/dnet/metabase/read-addr", "");
+#ifdef HAVE_METABASE
+	metabase_current_stamp_ = 0;
+	metabase_usage_ = DNET_FCGI_META_NONE;
+	names.clear();
+	config->subKeys(path + "/metabase/addr", names);
+	if (names.size() > 0) {
+		try {
+			metabase_context_.reset(new zmq::context_t(config->asInt(path + "/metabase/net_threads", 1)));
+			metabase_socket_.reset(new zmq::socket_t(*metabase_context_, ZMQ_DEALER));
+
+			// Disable linger so that the socket won't hang for eternity waiting for the peer
+			int linger = 0;
+			metabase_socket_->setsockopt(ZMQ_LINGER, &linger, sizeof(linger));
+
+			for (std::vector<std::string>::iterator it = names.begin(), end = names.end(); end != it; ++it) {
+				log()->debug("connecting to zmq host %s", config->asString(it->c_str()).c_str());
+				metabase_socket_->connect(config->asString(it->c_str()).c_str());
+			}
+
+			// Default timeout is 100ms
+			metabase_timeout_ = config->asInt(path + "/metabase/timeout", 100 * 1000);
+
+			std::string cfg_metabase_usage = config->asString(path + "/metabase/usage", "normal");
+			if (!cfg_metabase_usage.compare("normal")) {
+				metabase_usage_ = DNET_FCGI_META_NORMAL;
+			} else if (!cfg_metabase_usage.compare("optional")) {
+				metabase_usage_ = DNET_FCGI_META_OPTIONAL;
+			} else if (!cfg_metabase_usage.compare("mandatory")) {
+				metabase_usage_ = DNET_FCGI_META_MANDATORY;
+			} else {
+				throw std::runtime_error(std::string("Incorrect metabase usage type: ") + cfg_metabase_usage);
+			}
+			log()->debug("cfg_metabase_usage %s, metabase_usage_ %d", cfg_metabase_usage.c_str(), metabase_usage_);
+
+		}
+		catch (const std::exception &e) {
+			log()->error("can not connect to metabase: %s", e.what());
+			metabase_socket_.release();
+		}
+		catch (...) {
+			log()->error("can not connect to metabase");
+			metabase_socket_.release();
+		}
+	}
+
+#endif /* HAVE_METABASE */
 
 	names.clear();
 	config->subKeys(path + "/dnet/allow-origin/domains/domain", names);
@@ -1112,6 +1165,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		request->getScriptName().substr(sizeof ("/upload/") - 1, std::string::npos);
 
 	int replication_count = 0;
+	int use_metabase = 0;
 	if (request->hasArg("replication-count")) {
 		try {
 			replication_count = boost::lexical_cast<int>(request->getArg("replication-count"));
@@ -1125,10 +1179,22 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	}
 
 	std::vector<int> groups = getGroups(request, replication_count);
-
-	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
-		uploadMetaInfo(groups, filename);
+#ifdef HAVE_METABASE
+	if (metabase_socket_.get()) {
+		std::vector<int> meta_groups = getMetabaseGroups(request, replication_count);
+		if (meta_groups.size() > 0) {
+			groups = meta_groups;
+			use_metabase = 1;
+		}
 	}
+	if (metabase_usage_ >= DNET_FCGI_META_NORMAL && !use_metabase) {
+		std::string response("Metabase is not available or no suitable groups found");
+		log()->error(response.c_str());
+		request->setStatus(410);
+		request->write(response.c_str(), response.length());
+		return;
+	}
+#endif /* HAVE_METABASE */
 
 	struct timeval start, stop;
 	gettimeofday(&start, NULL);
@@ -1243,7 +1309,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		}
 
 		std::vector<int> temp_groups;
-		if (replication_count != 0 && groups.size() != groups_.size()) {
+		if (replication_count != 0 && groups.size() != groups_.size() && !use_metabase) {
 			for (std::size_t i = 0; i < groups_.size(); ++i) {
 				if (groups.end() == std::find(groups.begin(), groups.end(), groups_[i])) {
 					temp_groups.push_back(groups_[i]);
@@ -1291,7 +1357,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 			lookup.clear();
 
-			 if (temp_groups.size() == 0 || (written && written >= replication_count)) {
+			if (temp_groups.size() == 0 || (written && written >= replication_count) || use_metabase ) {
 				break;
 			}
 
@@ -1338,6 +1404,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		log()->debug("request %s metadata written spent %d", request->getScriptName().c_str(), (stop.tv_sec - start.tv_sec) * 1000000 +
 			(stop.tv_usec - start.tv_usec));
+
+		if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
+			uploadMetaInfo(groups, filename);
+		}
+
 
 		elliptics_node_->add_groups(groups_);
 
@@ -1844,7 +1915,93 @@ EllipticsProxy::refresh() {
 		usleep(1000);
 	}
 }
-#endif
+#endif /* HAVE_GEOBASE */
+
+#ifdef HAVE_METABASE
+std::vector<int> 
+EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count) {
+	std::vector<int> groups;
+	int rc = 0;
+
+	log()->debug("Requesting metabase for %d groups for upload, metabase_usage: %d", count, metabase_usage_);
+
+	if (metabase_usage_ == DNET_FCGI_META_NORMAL && request->hasArg("groups")) {
+		groups = getGroups(request, count);
+		count = groups.size();
+		return groups;
+	}
+
+	if (count <= 0)
+		return groups;
+
+	if (!metabase_socket_.get())
+		return groups;
+
+	MetabaseRequest req;
+	req.groups_num = count;
+	req.stamp = ++metabase_current_stamp_;
+
+	msgpack::sbuffer buf;
+	msgpack::pack(buf, req);
+
+	zmq::message_t empty_msg;
+	zmq::message_t msg(buf.size());
+	memcpy(msg.data(), buf.data(), buf.size());
+
+	try {
+		if (!metabase_socket_->send(empty_msg, ZMQ_SNDMORE)) {
+			log()->error("error during zmq send empty");
+			return groups;
+		}
+		if (!metabase_socket_->send(msg)) {
+			log()->error("error during zmq send");
+			return groups;
+		}
+	} catch(const zmq::error_t& e) {
+		log()->error("error during zmq send: %s", e.what());
+		return groups;
+	}
+
+	zmq::pollitem_t items[] = {
+		{ *metabase_socket_, 0, ZMQ_POLLIN, 0 }
+	};
+
+	rc = 0;
+
+	try {
+		rc = zmq::poll(items, 1, metabase_timeout_);
+	} catch(const zmq::error_t& e) {
+		log()->error("error during zmq poll: %s", e.what());
+		return groups;
+	}
+
+	if (rc == 0) {
+		log()->error("error: no answer from zmq");
+	} else if (items[0].revents && ZMQ_POLLIN) {
+		MetabaseResponse resp;
+		msgpack::unpacked unpacked;
+
+		resp.stamp = 0;
+		while (resp.stamp < metabase_current_stamp_) {
+			if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
+				break;
+			}
+			if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
+				break;
+			}
+
+			msgpack::unpack(&unpacked, static_cast<const char*>(msg.data()), msg.size());
+			unpacked.get().convert(&resp);
+		}
+
+		return resp.groups;
+	} else {
+		log()->error("error after zmq poll: %d", rc);
+	}
+
+	return groups;
+}
+#endif /* HAVE_METABASE */
 
 size_t
 EllipticsProxy::paramsNum(Tokenizer &tok) {
