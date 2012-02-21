@@ -1,3 +1,11 @@
+elliptics-fastcgi (1.2-5) unstable; urgency=low
+
+  * added exec-script handle
+  * try to read range in all groups if no data found
+  * metabase balancer support
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Tue, 21 Feb 2012 20:12:51 +0400
+
 elliptics-fastcgi (1.2-4) unstable; urgency=low
 
   * added eblob_style_path config option 
