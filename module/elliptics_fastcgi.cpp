@@ -1952,15 +1952,15 @@ EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count, struc
 	msgpack::pack(buf, req);
 
 	zmq::message_t empty_msg;
-	zmq::message_t msg(buf.size());
-	memcpy(msg.data(), buf.data(), buf.size());
+	zmq::message_t req_msg(buf.size());
+	memcpy(req_msg.data(), buf.data(), buf.size());
 
 	try {
 		if (!metabase_socket_->send(empty_msg, ZMQ_SNDMORE)) {
 			log()->error("error during zmq send empty");
 			return groups;
 		}
-		if (!metabase_socket_->send(msg)) {
+		if (!metabase_socket_->send(req_msg)) {
 			log()->error("error during zmq send");
 			return groups;
 		}
@@ -1980,25 +1980,38 @@ EllipticsProxy::getMetabaseGroups(fastcgi::Request *request, size_t count, struc
 	} catch(const zmq::error_t& e) {
 		log()->error("error during zmq poll: %s", e.what());
 		return groups;
+	} catch (...) {
+		log()->error("error during zmq poll");
+		return groups;
 	}
 
 	if (rc == 0) {
 		log()->error("error: no answer from zmq");
 	} else if (items[0].revents && ZMQ_POLLIN) {
+		zmq::message_t msg;
 		MetabaseResponse resp;
 		msgpack::unpacked unpacked;
 
-		resp.stamp = 0;
-		while (resp.stamp < metabase_current_stamp_) {
-			if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
-				break;
-			}
-			if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
-				break;
-			}
+		try {
+			resp.stamp = 0;
+			while (resp.stamp < metabase_current_stamp_) {
+				if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
+					break;
+				}
+				if (!metabase_socket_->recv(&msg, ZMQ_NOBLOCK)) {
+					break;
+				}
 
-			msgpack::unpack(&unpacked, static_cast<const char*>(msg.data()), msg.size());
-			unpacked.get().convert(&resp);
+				msgpack::unpack(&unpacked, static_cast<const char*>(msg.data()), msg.size());
+				unpacked.get().convert(&resp);
+				log()->debug("current stamp is %d", resp.stamp);
+			}
+		} catch(const msgpack::unpack_error &e) {
+			log()->error("error during msgpack::unpack: %s", e.what());
+			return groups;
+		} catch(...) {
+			log()->error("error during msgpack::unpack");
+			return groups;
 		}
 
 		return resp.groups;
