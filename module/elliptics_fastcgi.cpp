@@ -232,6 +232,9 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 			else if (request->hasArg("bulk-write")) {
 				handler = "bulk-write";
 			}
+			else if (request->hasArg("exec-script")) {
+				handler = "exec-script";
+			}
 			else {
 				if (request->hasArg("name")) {
 					handler = request->getServerPort() == write_port_ ? "upload" : "download-info";
@@ -551,6 +554,7 @@ EllipticsProxy::onLoad() {
 	registerHandler("delete", &EllipticsProxy::deleteHandler);
 	registerHandler("bulk-read", &EllipticsProxy::bulkReadHandler);
 	registerHandler("bulk-write", &EllipticsProxy::bulkWriteHandler);
+	registerHandler("exec-script", &EllipticsProxy::execScriptHandler);
 }
 
 void
@@ -1797,6 +1801,61 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 		log()->error("BULK_WRITE failed");
 		request->setStatus(404);
 	}
+}
+
+void
+EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
+	if (elliptics_node_->state_num() < state_num_) {
+		request->setStatus(403);
+		return;
+	}
+
+	struct dnet_id id;
+	memset(&id, 0, sizeof(id));
+
+	std::string filename = request->hasArg("name") ? request->getArg("name") :
+		request->getScriptName().substr(sizeof ("/exec-script/") - 1, std::string::npos);
+
+	if (request->hasArg("id")) {
+		dnet_parse_numeric_id(request->getArg("id"), id);
+	} else {
+		elliptics_node_->transform(filename, id);
+	}
+
+	std::string script = request->hasArg("script") ? request->getArg("script") : "";
+
+	std::vector<int> groups;
+	groups = getGroups(request);
+	std::string ret;
+
+	try {
+		log()->debug("script is <%s>", script.c_str());
+
+		elliptics_node_->add_groups(groups);
+
+		std::string content;
+		request->requestBody().toString(content);
+
+
+		if (script.empty()) {
+			ret = elliptics_node_->exec_name(&id, "", content, "", DNET_EXEC_PYTHON);
+		} else {
+			ret = elliptics_node_->exec_name(&id, script, "", content, DNET_EXEC_PYTHON_SCRIPT_NAME);
+		}
+
+		elliptics_node_->add_groups(groups_);
+
+	}
+	catch (const std::exception &e) {
+		log()->error("can not execute script %s %s", script.c_str(), e.what());
+		request->setStatus(400);
+	}
+	catch (...) {
+		log()->error("can not execute script %s", script.c_str());
+		request->setStatus(400);
+	}
+	request->setStatus(200);
+	request->write(ret.data(), ret.size());
 }
 
 std::vector<int>

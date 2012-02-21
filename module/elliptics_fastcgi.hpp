@@ -89,6 +89,7 @@ private:
 	void deleteHandler(fastcgi::Request *request);
 	void bulkReadHandler(fastcgi::Request *request);
 	void bulkWriteHandler(fastcgi::Request *request);
+	void execScriptHandler(fastcgi::Request *request);
 
 	void dnet_parse_numeric_id(const std::string &value, struct dnet_id &id);
 
