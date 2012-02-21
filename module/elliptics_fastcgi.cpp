@@ -780,7 +780,8 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 		for (size_t i = 0; i < groups.size(); ++i) {
 			try {
 				ret = elliptics_node_->read_data_range(io, groups[i], aflags);
-				break;
+				if (ret.size())
+					break;
 			} catch (...) {
 				continue;
 			}
