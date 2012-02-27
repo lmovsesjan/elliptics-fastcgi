@@ -360,6 +360,8 @@ EllipticsProxy::onLoad() {
         eblob_style_path_ = config->asInt(path + "/dnet/eblob_style_path", 0);
 
 	replication_count_ = config->asInt(path + "/dnet/replication-count", 0);
+	chunk_size_ = config->asInt(path + "/dnet/chunk_size", 0);
+	if (chunk_size_ < 0) chunk_size_ = 0;
 
 	use_cookie_ = (config->asString(path + "/dnet/cookie/name", "") != "");
 
@@ -1224,6 +1226,13 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	try {
 		elliptics_node_->add_groups(groups);
 
+		bool chunked = false;
+		boost::uint64_t chunk_offset = 0;
+		boost::uint64_t write_offset;
+		boost::uint64_t total_size = buffer.size();
+		fastcgi::DataBuffer::SegmentIterator buffer_it, buffer_end;
+		std::pair<char*, boost::uint64_t> chunk;
+
 		std::string content;
 		if (embed) {
 			int size = sizeof (struct dnet_common_embed) * 2 + sizeof (uint64_t) * 2;
@@ -1234,12 +1243,35 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				throw std::runtime_error("bad data prepending");
 			}
 			content.append(header, size);
+			total_size += content.size();
 		}
 
-		content.reserve(content.size() + buffer.size());
-		for (fastcgi::DataBuffer::SegmentIterator it = buffer.begin(), end = buffer.end(); it != end; ++it) {
-			std::pair<char*, boost::uint64_t> chunk = *it;
-			content.append(chunk.first, chunk.second);
+		if (chunk_size_ && buffer.size() > (unsigned int)chunk_size_) {
+			boost::uint64_t size = 0;
+			chunked = true;
+			content.reserve(chunk_size_ + content.size());
+			for (buffer_it = buffer.begin(), buffer_end = buffer.end(); buffer_it != buffer_end; ++buffer_it, chunk_offset = 0) {
+				size = chunk_size_;
+				chunk = *buffer_it;
+				log()->debug("chunk_offset: %llu, chunk: %x, end: %x", chunk_offset, chunk.first, buffer_end->first);
+				if (chunk.second < size)
+					size = chunk.second;
+				content.append(chunk.first, size);
+				chunk_offset += size;
+				if (size >= (boost::uint64_t)chunk_size_)
+					break;
+			}
+			if (chunk.second == size && size > 0) {
+				++buffer_it;
+				chunk_offset = 0;
+			}
+			log()->debug("after for chunk_offset: %llu, chunk: %x, end: %x", chunk_offset, chunk.first, buffer_end->first);
+		} else {
+			content.reserve(content.size() + buffer.size());
+			for (fastcgi::DataBuffer::SegmentIterator it = buffer.begin(), end = buffer.end(); it != end; ++it) {
+				std::pair<char*, boost::uint64_t> chunk = *it;
+				content.append(chunk.first, chunk.second);
+			}
 		}
 
 		int result = 0;
@@ -1263,13 +1295,17 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 				if (request->hasArg("prepare")) {
 					uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
-					result = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
-				} if (request->hasArg("commit")) {
-					result = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
-				} if (request->hasArg("plain_write")) {
-					result = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+					lookup = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, aflags, ioflags, column);
+				} else if (request->hasArg("commit")) {
+					lookup = elliptics_node_->write_commit(filename, content, offset, 0, aflags, ioflags, column);
+				} else if (request->hasArg("plain_write")) {
+					lookup = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
 				} else {
-					lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+					if (chunk_offset) {
+						lookup = elliptics_node_->write_prepare(filename, content, offset, total_size, aflags, ioflags, column);
+					} else {
+						lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+					}
 				}
 			}
 		}
@@ -1367,15 +1403,25 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				size -= min_size + info->flen;
 			}
 			lookup.clear();
+			log()->debug("written: %d", written);
 
 			if (temp_groups.size() == 0 || (written && written >= replication_count) || use_metabase ) {
 				break;
 			}
 
+			std::vector<int> try_group(1, 0);
 			for (std::vector<int>::iterator it = temp_groups.begin(), end = temp_groups.end(); end != it; ++it) {
 				try {
-					elliptics_node_->add_groups(upload_group);
-					lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+					log()->debug("writing to group %d", *it);
+					try_group[0] = *it;
+					elliptics_node_->add_groups(try_group);
+
+					if (chunked) {
+						lookup = elliptics_node_->write_plain(filename, content, offset, aflags, ioflags, column);
+					} else {
+						lookup = elliptics_node_->write_data_wait(filename, content, offset, aflags, ioflags, column);
+					}
+				
 					temp_groups.erase(it);
 					break;
 				} catch (...) {
@@ -1384,6 +1430,37 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			}
 		}
 
+		try {
+			if (chunked) {
+				elliptics_node_->add_groups(upload_group);
+				write_offset = offset + content.size();
+				content.clear();
+				log()->debug("chunk_offset: %llu, chunk: %x", chunk_offset, chunk.first);
+				for (; buffer_it != buffer_end; ++buffer_it, chunk_offset = 0) {
+					chunk = *buffer_it;
+					while (chunk_offset < chunk.second) {
+						log()->debug("    chunk_offset: %llu, chunk: %x", chunk_offset, chunk.first);
+						boost::uint64_t size = chunk_size_;
+						if ((chunk.second - chunk_offset) < size)
+							size = chunk.second - chunk_offset;
+						content.assign(chunk.first + chunk_offset, size);
+						chunk_offset += size;
+
+						lookup = elliptics_node_->write_plain(filename, content, write_offset, aflags, ioflags, column);
+						write_offset += size;
+						content.clear();
+					}
+				}
+			}
+		} catch(const std::exception &e) {
+			log()->error("error while uploading chunked data for file %s: %s", filename.c_str(), e.what());
+			written = 0;
+		} catch(...) {
+			log()->error("error while uploading chunked data for file %s:", filename.c_str());
+			written = 0;
+		}
+
+		log()->debug("written: %d", written);
 		if (replication_count != 0 && written < replication_count) {
 			try {
 				elliptics_node_->add_groups(groups_);

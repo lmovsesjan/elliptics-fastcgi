@@ -151,6 +151,7 @@ private:
 	int                                         write_port_;
 	int                                         directory_bit_num_;
 	int                                         eblob_style_path_;
+	int                                         chunk_size_;
 	bool                                        use_cookie_;
 	std::string                                 sign_key_;
 	std::string                                 cookie_name_;
