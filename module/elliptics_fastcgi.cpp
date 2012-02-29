@@ -627,12 +627,6 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 		elliptics_node_->add_groups(groups_);
 
-		std::pair<std::string, time_t> s = !use_cookie_ ? std::make_pair(std::string(), time(NULL)) : secret(request);
-
-		std::ostringstream ostr;
-		ostr << sign_key_ << std::hex << s.second << s.first;
-		std::string sign = md5(ostr.str());
-
 #ifdef HAVE_GEOBASE
 		geobase3::v4::id geoid;
 		try {
@@ -643,9 +637,6 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 			geoid = -1;
 		}
 #endif
-
-		char tsstr[32];
-		snprintf(tsstr, sizeof (tsstr), "%lx", s.second);
 
 		result += "<download-info>";
 
@@ -688,15 +679,26 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 #endif
 
 		if (eblob_style_path_) {
-			path = std::string((char *)(info + 1)) + ":" + boost::lexical_cast<std::string>(info->offset) + 
-        	                                                 ":" +  boost::lexical_cast<std::string>(info->size);
+			path = std::string((char *)(info + 1));
+			path = path.substr(path.find_last_of("/\\") + 1);
+			path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' 
+				+ path + ":" + boost::lexical_cast<std::string>(info->offset)
+				+ ":" +  boost::lexical_cast<std::string>(info->size);
 		} else {
 			path = "/" + boost::lexical_cast<std::string>(port - base_port_) + '/' + hex_dir + '/' + id;
 		}
 
+		std::pair<std::string, time_t> s = !use_cookie_ ? std::make_pair(std::string(), time(NULL)) : secret(request);
+
+		std::ostringstream ostr;
+		ostr << sign_key_ << std::hex << s.second << s.first << path;
+		log()->debug("sign_source %s", ostr.str().c_str());
+		std::string sign = md5(ostr.str());
+
+		char tsstr[32];
+		snprintf(tsstr, sizeof (tsstr), "%lx", s.second);
+
 		result += "<host>" + std::string(hbuf) + "</host><path>" + path + "</path>" + "<ts>" + tsstr + "</ts>";
-//		result += "<host>" + std::string(hbuf) + "</host><path>/" + boost::lexical_cast<std::string>(port - base_port_) +
-//			'/' + hex_dir + '/' + id + "</path>" + "<ts>" + tsstr + "</ts>";
 #ifdef HAVE_GEOBASE
 		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
 #endif
