@@ -1340,7 +1340,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		ostr << "<?xml version=\"1.0\" encoding=\"utf-8\"?>" <<
 			"<post obj=\"" << filename << "\" id=\"" << id_str <<
 			"\" crc=\"" << crc_str << "\" groups=\"" << groups.size() <<
-			"\" size=\"" << content.length() << "\">\n";
+			"\" size=\"" << buffer.size() << "\">\n";
 
 		log()->debug("string id %s", id_str);
 
