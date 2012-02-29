@@ -48,6 +48,7 @@
 
 namespace elliptics {
 
+#ifdef HAVE_METABASE
 struct MetabaseRequest {
 	int		groups_num;
 	uint64_t	stamp;
@@ -60,6 +61,7 @@ struct MetabaseResponse {
 	uint64_t	stamp;
 	MSGPACK_DEFINE(groups, stamp);
 };
+#endif /* HAVE_METABASE */
 
 class EllipticsProxy;
 
