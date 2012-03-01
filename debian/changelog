@@ -1,3 +1,12 @@
+elliptics-fastcgi (1.2-6) unstable; urgency=low
+
+  * chunked upload support
+  * new sign calculation algorithm
+  * fix build with no metabase support
+  * depend on elliptics-2.10 2.12
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Wed, 29 Feb 2012 17:59:42 +0400
+
 elliptics-fastcgi (1.2-5) unstable; urgency=low
 
   * added exec-script handle
