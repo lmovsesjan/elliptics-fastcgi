@@ -68,6 +68,11 @@ class EllipticsProxy;
 typedef void (EllipticsProxy::*RequestHandler)(fastcgi::Request *request);
 
 class EllipticsProxy : virtual public fastcgi::Component, virtual public fastcgi::Handler {
+	class cookie_sign {
+	public:
+		std::string                                 sign_key;
+		std::string                                 path;
+	};
 
 private:
 	typedef std::map<std::string, RequestHandler> RequestHandlers;
@@ -155,12 +160,12 @@ private:
 	int                                         eblob_style_path_;
 	int                                         chunk_size_;
 	bool                                        use_cookie_;
-	std::string                                 sign_key_;
 	std::string                                 cookie_name_;
 	std::string                                 cookie_key_;
 	std::string                                 cookie_path_;
 	std::string                                 cookie_domain_;
 	time_t                                      cookie_expires_;
+	std::vector<EllipticsProxy::cookie_sign>    cookie_signs_;
 	std::set<std::string>                       deny_list_;
 	std::set<std::string>                       allow_list_;
 	time_t                                      expires_;
