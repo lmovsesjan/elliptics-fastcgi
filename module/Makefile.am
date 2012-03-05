@@ -6,7 +6,7 @@ elliptics_fastcgi_la_SOURCES = elliptics_fastcgi.cpp refresher.cpp
 elliptics_fastcgi_la_LDFLAGS = -module @VERSION_INFO@ @FASTCGIDAEMON_LIBS@ @ELLIPTICS_LIBS@
 
 if HAVE_GEOBASE
-elliptics_fastcgi_la_LDFLAGS += $(libdir)/fastcgi2/elliptics-regional-module.la
+elliptics_fastcgi_la_LDFLAGS += $(libdir)/fastcgi2/elliptics-regional-module.so
 endif
 
 AM_CXXFLAGS = -W -Wall -g -O2 -fPIC
