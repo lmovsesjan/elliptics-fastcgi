@@ -10,6 +10,7 @@ Source0:	%{name}-%{version}.tar.bz2
 BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 BuildRequires:	fastcgi-daemon2-libs-devel, curl, elliptics-devel, elliptics-c++-devel, libgeobase3-devel, autoconf, automake, libtool, pkgconfig, openssl-devel, boost-devel, curl-devel, eblob-devel elliptics-regional-module libyandex-user-settings-devel
+BuildRequires:  fcgi-devel, openssl-devel, libxml2-devel
 
 %description
 Elliptics is one of the best prodution enterprise high scalability and
