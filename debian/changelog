@@ -1,6 +1,7 @@
 elliptics-fastcgi (1.2-8) unstable; urgency=low
 
   * added embed processors support
+  * return 503 http error code instead of 400
 
  -- Anton Kortunov <toshic@yandex-team.ru>  Wed, 14 Mar 2012 22:16:01 +0400
 
