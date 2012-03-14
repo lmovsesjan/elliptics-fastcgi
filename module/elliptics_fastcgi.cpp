@@ -245,7 +245,7 @@ EllipticsProxy::handleRequest(fastcgi::Request *request, fastcgi::HandlerContext
 		throw;
 	}
 	catch (...) {
-		throw fastcgi::HttpException(400);
+		throw fastcgi::HttpException(501);
 	}
 }
 
@@ -1355,7 +1355,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		if ((result == 0) && (lookup.size() == 0)) {
 			log()->error("can not write file %s", filename.c_str());
-			request->setStatus(400);
+			request->setStatus(503);
 			return;
 		}
 
@@ -1574,11 +1574,11 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	}
 	catch (const std::exception &e) {
 		log()->error("can not write file %s %s", filename.c_str(), e.what());
-		request->setStatus(400);
+		request->setStatus(503);
 	}
 	catch (...) {
 		log()->error("can not write file %s", filename.c_str());
-		request->setStatus(400);
+		request->setStatus(503);
 	}
 }
 
@@ -1637,11 +1637,11 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 	}
 	catch (const std::exception &e) {
 		log()->error("can not delete file %s %s", filename.c_str(), e.what());
-		request->setStatus(400);
+		request->setStatus(503);
 	}
 	catch (...) {
 		log()->error("can not write file %s", filename.c_str());
-		request->setStatus(400);
+		request->setStatus(504);
 	}
 }
 
@@ -1962,11 +1962,11 @@ EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
 	}
 	catch (const std::exception &e) {
 		log()->error("can not execute script %s %s", script.c_str(), e.what());
-		request->setStatus(400);
+		request->setStatus(503);
 	}
 	catch (...) {
 		log()->error("can not execute script %s", script.c_str());
-		request->setStatus(400);
+		request->setStatus(503);
 	}
 	request->setStatus(200);
 	request->write(ret.data(), ret.size());
@@ -1986,7 +1986,7 @@ EllipticsProxy::getGroups(fastcgi::Request *request, size_t count) const {
 			}
 		}
 		catch (...) {
-			throw fastcgi::HttpException(400);
+			throw fastcgi::HttpException(503);
 		}
 	}
 	else {
