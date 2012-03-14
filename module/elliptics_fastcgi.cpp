@@ -45,31 +45,12 @@
 
 namespace elliptics {
 
-enum dnet_common_embed_types {
-	DNET_FCGI_EMBED_DATA	    = 1,
-	DNET_FCGI_EMBED_TIMESTAMP,
-};
-
 enum dnet_metabase_type {
 	DNET_FCGI_META_NONE = 0,
 	DNET_FCGI_META_OPTIONAL,
 	DNET_FCGI_META_NORMAL,
 	DNET_FCGI_META_MANDATORY,
 };
-
-struct dnet_common_embed {
-	uint64_t		size;
-	uint32_t		type;
-	uint32_t		flags;
-	uint8_t		 data[0];
-};
-
-static inline void
-dnet_common_convert_embedded(struct dnet_common_embed *e) {
-	e->size = dnet_bswap64(e->size);
-	e->type = dnet_bswap32(e->type);
-	e->flags = dnet_bswap32(e->flags);
-}
 
 static inline char*
 file_backend_get_dir(const unsigned char *id, uint64_t bit_num, char *dst) {
@@ -544,6 +525,17 @@ EllipticsProxy::onLoad() {
 	}
 
 #endif /* HAVE_METABASE */
+
+	names.clear();
+	config->subKeys(path + "/embed_processors/processor", names);
+	for (std::vector<std::string>::iterator it = names.begin(), end = names.end(); end != it; ++it) {
+		EmbedProcessorModuleBase *processor = context()->findComponent<EmbedProcessorModuleBase>(config->asString(*it + "/name"));
+		if (!processor) {
+			log()->error("Embed processor %s doesn't exists in config", config->asString(*it + "/name").c_str());
+		} else {
+	                embed_processors_.push_back(std::make_pair(config->asInt(*it + "/type"), processor));
+		}
+	}
 
 	names.clear();
 	config->subKeys(path + "/dnet/allow-origin/domains/domain", names);
@@ -1041,6 +1033,22 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 				if (e->type == DNET_FCGI_EMBED_DATA) {
 					size = e->size;
 					break;
+				}
+
+				if (e->type > DNET_FCGI_EMBED_TIMESTAMP) {
+					int http_status = 200;
+					bool allowed = true;
+                                        for (size_t i = 0; i < embed_processors_.size(); i++) {
+						if (embed_processors_[i].first == e->type) {
+							log()->debug("Found embed processor for type %d", e->type);
+							allowed = embed_processors_[i].second->processEmbed(request, *e, http_status);
+							log()->debug("After embed processor http status %d, allowed %d", http_status, allowed);
+						}
+						if (!allowed) {
+							request->setStatus(http_status);
+							return;
+						}
+					}
 				}
 
 				offset += e->size;

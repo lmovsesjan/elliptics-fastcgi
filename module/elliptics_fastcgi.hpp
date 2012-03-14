@@ -45,6 +45,7 @@
 
 #include "boost_threaded.hpp"
 #include "refresher.hpp"
+#include "embed_processor.hpp"
 
 namespace elliptics {
 
@@ -173,6 +174,7 @@ private:
 	std::string                                 metabase_read_addr_;
 	std::set<std::string>                       allow_origin_domains_;
 	std::set<std::string>                       allow_origin_handlers_;
+        std::vector<std::pair<uint32_t, EmbedProcessorModuleBase*> > embed_processors_;
 
 };
 
