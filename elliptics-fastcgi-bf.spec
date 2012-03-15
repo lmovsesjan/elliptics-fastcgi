@@ -43,6 +43,7 @@ rm -rf $RPM_BUILD_ROOT
 %files
 %defattr(-,root,root,-)
 %{_libdir}/*
+%{_includedir}/*
 
 
 %changelog
