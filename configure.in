@@ -32,7 +32,9 @@ AM_CONDITIONAL(HAVE_GEOBASE, [test 1 = 0])
 
 AC_CHECK_LIB([crypto], [main])
 AC_CHECK_LIB([curl], [main])
-AC_CHECK_LIB([geobase3], [main], [AC_DEFINE(HAVE_GEOBASE, 1, [Have libgeobase3]) AM_CONDITIONAL(HAVE_GEOBASE, true)])
+AC_CHECK_LIB([geobase3], [main], 
+	AS_IF([test -f "${prefix}/lib/fastcgi2/elliptics-regional-module.so"],
+		[AC_DEFINE(HAVE_GEOBASE, 1, [Have libgeobase3]) AM_CONDITIONAL(HAVE_GEOBASE, true)]))
 
 AC_CHECK_LIB([zmq], [main], [have_libzmq="yes"])
 AC_CHECK_LIB([msgpack], [main], [have_msgpack="yes"])
