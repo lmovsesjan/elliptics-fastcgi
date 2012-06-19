@@ -370,7 +370,7 @@ EllipticsProxy::onLoad() {
 	
 	std::string elliptics_log_filename = config->asString(path + "/dnet/log/path");
 	uint32_t elliptics_log_mask = config->asInt(path + "/dnet/log/mask");
-	elliptics_log_.reset(new zbr::elliptics_log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
+	elliptics_log_.reset(new ioremap::elliptics::log_file(elliptics_log_filename.c_str(), elliptics_log_mask));
 
 	struct dnet_config dnet_conf;
 	memset(&dnet_conf, 0, sizeof (dnet_conf));
@@ -379,7 +379,7 @@ EllipticsProxy::onLoad() {
 	dnet_conf.check_timeout = config->asInt(path + "/dnet/reconnect-timeout", 0);
 	dnet_conf.flags = config->asInt(path + "/dnet/cfg-flags", 4);
 
-	elliptics_node_.reset(new zbr::elliptics_node(*elliptics_log_, dnet_conf));
+	elliptics_node_.reset(new ioremap::elliptics::node(*elliptics_log_, dnet_conf));
 
 	names.clear();
 	config->subKeys(path + "/dnet/remote/addr", names);
@@ -607,8 +607,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 		struct dnet_addr *addr = (struct dnet_addr *)data;
 		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+		struct dnet_addr_attr *a = (struct dnet_addr_attr *)(cmd + 1);
 		struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
 		dnet_convert_file_info(info);
 
@@ -1112,13 +1111,12 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 	while (size) {
 		struct dnet_addr *addr = (struct dnet_addr *)data;
 		struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-		if (cmd->size != sizeof (struct dnet_attr) + sizeof (struct dnet_stat)) {
+		if (cmd->size != sizeof (struct dnet_stat)) {
 			size -= cmd->size + sizeof (struct dnet_addr) + sizeof (struct dnet_cmd);
 			data = (char *)data + cmd->size + sizeof (struct dnet_addr) + sizeof (struct dnet_cmd);
 			continue;
 		}
-		struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-		struct dnet_stat *st = (struct dnet_stat *)(attr + 1);
+		struct dnet_stat *st = (struct dnet_stat *)(cmd+ 1);
 
 		dnet_convert_stat(st);
 
@@ -1144,7 +1142,7 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 
 		result += buf;
 
-		int sz = sizeof(*addr) + sizeof(*cmd) + sizeof(*attr) + attr->size;
+		int sz = sizeof(*addr) + sizeof(*cmd);
 		size -= sz;
 		data = (char *)data + sz;
 	}
@@ -1412,15 +1410,13 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			char *data = (char *)lookup.data();
 			long min_size = sizeof(struct dnet_cmd) +
 					sizeof(struct dnet_addr) +
-					sizeof(struct dnet_attr) +
 					sizeof(struct dnet_addr_attr) +
 					sizeof(struct dnet_file_info);
 
 			while (size > min_size) {
 				struct dnet_addr *addr = (struct dnet_addr *)data;
 				struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-				struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-				struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+				struct dnet_addr_attr *a = (struct dnet_addr_attr *)(cmd + 1);
 
 				struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
 				dnet_convert_file_info(info);
@@ -1849,7 +1845,6 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 		char *data = (char *)lookup.data();
 		long min_size = sizeof(struct dnet_cmd) +
 				sizeof(struct dnet_addr) +
-				sizeof(struct dnet_attr) +
 				sizeof(struct dnet_addr_attr) +
 				sizeof(struct dnet_file_info);
 
@@ -1861,8 +1856,7 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 		while (size > min_size) {
 			struct dnet_addr *addr = (struct dnet_addr *)data;
 			struct dnet_cmd *cmd = (struct dnet_cmd *)(addr + 1);
-			struct dnet_attr *attr = (struct dnet_attr *)(cmd + 1);
-			struct dnet_addr_attr *a = (struct dnet_addr_attr *)(attr + 1);
+			struct dnet_addr_attr *a = (struct dnet_addr_attr *)(cmd + 1);
 
 			struct dnet_file_info *info = (struct dnet_file_info *)(a + 1);
 			dnet_convert_file_info(info);
@@ -1951,11 +1945,7 @@ EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
 		request->requestBody().toString(content);
 
 
-		if (script.empty()) {
-			ret = elliptics_node_->exec_name(&id, "", content, "", DNET_EXEC_PYTHON);
-		} else {
-			ret = elliptics_node_->exec_name(&id, script, "", content, DNET_EXEC_PYTHON_SCRIPT_NAME);
-		}
+		ret = elliptics_node_->exec(&id, script, content, std::string());
 
 		elliptics_node_->add_groups(groups_);
 
