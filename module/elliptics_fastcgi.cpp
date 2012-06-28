@@ -1142,7 +1142,7 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 
 		result += buf;
 
-		int sz = sizeof(*addr) + sizeof(*cmd);
+		int sz = cmd->size + sizeof (struct dnet_addr) + sizeof (struct dnet_cmd);
 		size -= sz;
 		data = (char *)data + sz;
 	}
