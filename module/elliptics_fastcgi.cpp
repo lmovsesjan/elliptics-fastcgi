@@ -1691,7 +1691,7 @@ EllipticsProxy::bulkReadHandler(fastcgi::Request *request) {
 			}
 
 			// Finally, call bulk_read method
-			ret = elliptics_node_->bulk_read(keys, group_id, aflags);
+			ret = elliptics_node_->bulk_read(keys, aflags);
 
 		} else {
 			std::ostringstream str;
