@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.2-11) unstable; urgency=low
+
+  * compatibility with elliptics 2.15
+
+ -- Anton Kortunov <toshic@yandex-team.ru>  Thu, 26 Jul 2012 17:31:35 +0400
+
 elliptics-fastcgi (1.2-10) unstable; urgency=low
 
   * fixed stat_log handler
