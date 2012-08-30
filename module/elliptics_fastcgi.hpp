@@ -29,10 +29,9 @@
 #include <fastcgi2/logger.h>
 #include <fastcgi2/request.h>
 
-#ifdef HAVE_GEOBASE
-#include <geobase3/lookup.hpp>
+#ifdef HAVE_REGIONAL
 #include <fastcgi-elliptics/regional_module.hpp>
-#endif /* HAVE_GEOBASE */
+#endif /* HAVE_REGIONAL */
 
 #ifdef HAVE_METABASE
 #include <zmq.hpp>
@@ -44,7 +43,6 @@
 #include <elliptics/cppdef.h>
 
 #include "boost_threaded.hpp"
-#include "refresher.hpp"
 #include "embed_processor.hpp"
 
 namespace elliptics {
@@ -111,10 +109,6 @@ private:
 	void uploadMetaInfo(const std::vector<int> &groups, const std::string &filename) const;
 	std::vector<int> getMetaInfo(const std::string &filename) const;
 
-#ifdef HAVE_GEOBASE
-	void refresh();
-#endif /* HAVE_GEOBASE */
-
 	static size_t paramsNum(Tokenizer &tok);
 	static std::string md5(const std::string &source);
 
@@ -132,14 +126,9 @@ public:
 private:
 	fastcgi::Logger                            *logger_;
 	RequestHandlers                             handlers_;
-#ifdef HAVE_GEOBASE
-	boost::shared_ptr<geobase3::lookup>         lookup_;
-	std::auto_ptr<Refresher>                    refresher_;
-	boost::mutex                                mutex_;
-	std::string                                 filename_;
-	time_t                                      last_modified_;
+#ifdef HAVE_REGIONAL
 	RegionalModule*                             regional_module_;
-#endif /* HAVE_GEOBASE */
+#endif /* HAVE_REGIONAL */
 #ifdef HAVE_METABASE
 	std::auto_ptr<zmq::context_t>               metabase_context_;
 	std::auto_ptr<zmq::socket_t>                metabase_socket_;

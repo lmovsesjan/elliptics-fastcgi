@@ -7,7 +7,7 @@ Build-Depends: debhelper (>= 5),
  elliptics-dev (>= 2.17),
  elliptics-client (>= 2.17),
  libgeobase3-dev,
- elliptics-regional-module (>= 1.0-13),
+ elliptics-regional-module (>= 1.1),
  pkg-config,
  libcurl4-openssl-dev,
  autoconf (>= 2.52), automake1.9, libtool, libxml2-dev, libboost-thread-dev
@@ -17,7 +17,7 @@ Package: elliptics-fastcgi
 Architecture: any
 Depends: ${shlibs:Depends},
  libfastcgi2-syslog,
- elliptics-regional-module (>= 1.0-13),
+ elliptics-regional-module (>= 1.1),
  fastcgi-daemon2
 Description: Elliptics is one of the best prodution enterprise high scalability and availability system, wrote by one
  of the most genius software developers of the whole World. This is just a shitty FastCGI proxy for Elliptics, wrote

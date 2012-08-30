@@ -98,12 +98,10 @@ dnet_common_prepend_data(struct timespec *ts, uint64_t size, char *buf, int *buf
 EllipticsProxy::EllipticsProxy(fastcgi::ComponentContext *context) :
 	fastcgi::Component(context),
 	logger_(NULL)
-#ifdef HAVE_GEOBASE
-	, regional_module_(NULL) {
-	last_modified_ = 0;
-#else
-	{
-#endif
+#ifdef HAVE_REGIONAL
+	, regional_module_(NULL)
+#endif /* HAVE_REGIONAL */
+{
 }
 
 EllipticsProxy::~EllipticsProxy() {
@@ -315,26 +313,9 @@ EllipticsProxy::onLoad() {
 		throw std::logic_error("can't find logger");
 	}
 
-#ifdef HAVE_GEOBASE
-	filename_ = config->asString(path + "/geobase/path", "/var/cache/geobase/geodata3.bin");
-
-	struct stat st;
-	int result = stat(filename_.c_str(), &st);
-
-	if (result != 0) {
-		std::string msg = "can not locate geobase file " + filename_;
-		throw std::runtime_error(msg.c_str());
-	}
-
-	lookup_.reset((new geobase3::lookup(filename_.c_str())));
-	log()->info("loaded geobase index %s", filename_.c_str());
-	
-	boost::uint32_t timeout = config->asInt(path + "/geobase/timeout", 3600);
-	boost::function<void()> func = boost::bind(&EllipticsProxy::refresh, this);
-	refresher_.reset(new Refresher(func, timeout));
-
+#ifdef HAVE_REGIONAL
 	regional_module_ = context()->findComponent<RegionalModule>(config->asString(path + "/regional-module", "regional-module"));
-#endif
+#endif /* HAVE_REGIONAL */
 
 	state_num_ = config->asInt(path + "/dnet/die-limit");
 	base_port_ = config->asInt(path + "/dnet/base-port");
@@ -631,22 +612,15 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 
 		elliptics_node_->add_groups(groups_);
 
-#ifdef HAVE_GEOBASE
-		geobase3::v4::id geoid;
-		try {
-			std::string ip = request->hasHeader("X-Real-IP") ? request->getHeader("X-Real-IP") : request->getRemoteAddr();
-			geoid = lookup_->region_id(ip);
-		}
-		catch (...) {
-			geoid = -1;
-		}
-#endif
+		std::string region = "-1";
+		std::string ip = request->hasHeader("X-Real-IP") ? request->getHeader("X-Real-IP") : request->getRemoteAddr();
 
 		result += "<download-info>";
 
-#ifdef HAVE_GEOBASE
-		if (NULL != regional_module_ && geoid != -1) {
-			std::vector<std::string> hosts = regional_module_->getHosts(geoid);
+#ifdef HAVE_REGIONAL
+		if (NULL != regional_module_) {
+			region = regional_module_->getRegion(ip);
+			std::vector<std::string> hosts = regional_module_->getHosts(ip);
 			if (hosts.size() != 0) {
 				char f_str[2];
 				strncpy(f_str, id + sizeof (id) - 3, sizeof (f_str));
@@ -679,8 +653,8 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 				}
 			}
 		}
+#endif /* HAVE_REGIONAL */
 
-#endif
 
 		if (eblob_style_path_) {
 			path = std::string((char *)(info + 1));
@@ -717,9 +691,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		snprintf(tsstr, sizeof (tsstr), "%lx", s.second);
 
 		result += "<host>" + std::string(hbuf) + "</host><path>" + path + "</path>" + "<ts>" + tsstr + "</ts>";
-#ifdef HAVE_GEOBASE
-		result += "<region>" + boost::lexical_cast<std::string>(geoid) + "</region>";
-#endif
+		result += "<region>" + region + "</region>";
 		result += "<s>" + sign + "</s></download-info>";
 
 		request->setStatus(200);
@@ -2057,35 +2029,6 @@ EllipticsProxy::getMetaInfo(const std::string &filename) const {
 		throw fastcgi::HttpException(403);
 	}
 }
-
-#ifdef HAVE_GEOBASE
-void
-EllipticsProxy::refresh() {
-	struct stat st;
-	int result = stat(filename_.c_str(), &st);
-
-	if (result != 0) {
-		log()->error("can not locate geobase file %s!", filename_.c_str());
-		return;
-	}
-
-	if (st.st_mtime == last_modified_) {
-		return;
-	}
-
-	last_modified_ = st.st_mtime;
-
-	boost::shared_ptr<geobase3::lookup> clone_lookup(new geobase3::lookup(filename_.c_str()));
-
-	boost::mutex::scoped_lock lock(mutex_);
-	lookup_.swap(clone_lookup);
-	lock.unlock();
-
-	while (clone_lookup.get() && !clone_lookup.unique()) {
-		usleep(1000);
-	}
-}
-#endif /* HAVE_GEOBASE */
 
 #ifdef HAVE_METABASE
 std::vector<int> 
