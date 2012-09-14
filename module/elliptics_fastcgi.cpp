@@ -1917,7 +1917,7 @@ EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
 		request->requestBody().toString(content);
 
 
-		ret = elliptics_node_->exec(&id, script, content, std::string());
+		ret = elliptics_node_->exec_locked(&id, script, content, std::string());
 
 		elliptics_node_->add_groups(groups_);
 
