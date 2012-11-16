@@ -428,6 +428,7 @@ EllipticsProxy::onLoad() {
 		}
 	}
 
+/*
 	if (groups_.size() != 0) {
 		try {
 			elliptics_node_->add_groups(groups_);
@@ -440,7 +441,7 @@ EllipticsProxy::onLoad() {
 			log()->error("can not add dnet groups %s", groups.c_str());
 		}
 	}
-
+*/
 	success_copies_num_ = config->asInt(path + "/dnet/success-copies-num", groups_.size());
 
 	std::vector<std::string> typemap;
@@ -551,7 +552,8 @@ EllipticsProxy::onUnload() {
 
 void
 EllipticsProxy::pingHandler(fastcgi::Request *request) {
-	if (elliptics_node_->state_num() < state_num_) {
+	ioremap::elliptics::session sess(*elliptics_node_);
+	if (sess.state_num() < state_num_) {
 		request->setStatus(500);
 	}
 	else {
@@ -564,6 +566,7 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/download-info/") - 1, std::string::npos);
 
+	ioremap::elliptics::session sess(*elliptics_node_);
 	std::vector<int> groups;
         std::string path;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
@@ -579,8 +582,8 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 	}
 
 	try {
-		elliptics_node_->add_groups(groups);
-		std::string l = elliptics_node_->lookup(filename);
+		sess.add_groups(groups);
+		std::string l = sess.lookup(filename);
 
 		std::string result = "<?xml version=\"1.0\" encoding=\"utf-8\"?>";
 
@@ -605,12 +608,12 @@ EllipticsProxy::downloadInfoHandler(fastcgi::Request *request) {
 		char hex_dir[2 * DNET_ID_SIZE + 1];
 
 		struct dnet_id eid;
-		elliptics_node_->transform(filename, eid);
+		sess.transform(filename, eid);
 
 		dnet_dump_id_len_raw(eid.id, DNET_ID_SIZE, id);
 		file_backend_get_dir(eid.id, directory_bit_num_, hex_dir);
 
-		elliptics_node_->add_groups(groups_);
+		sess.add_groups(groups_);
 
 		std::string region = "-1";
 		std::string ip = request->hasHeader("X-Real-IP") ? request->getHeader("X-Real-IP") : request->getRemoteAddr();
@@ -713,6 +716,7 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/range/") - 1, std::string::npos);
 
+	ioremap::elliptics::session sess(*elliptics_node_);
 	std::vector<int> groups;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		try {
@@ -777,7 +781,7 @@ EllipticsProxy::rangeHandler(fastcgi::Request *request) {
 
 		for (size_t i = 0; i < groups.size(); ++i) {
 			try {
-				ret = elliptics_node_->read_data_range(io, groups[i], cflags);
+				ret = sess.read_data_range(io, groups[i], cflags);
 				if (ret.size())
 					break;
 			} catch (...) {
@@ -817,6 +821,7 @@ EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/range/") - 1, std::string::npos);
 
+	ioremap::elliptics::session sess(*elliptics_node_);
 	std::vector<int> groups;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		try {
@@ -871,7 +876,7 @@ EllipticsProxy::rangeDeleteHandler(fastcgi::Request *request) {
 
 		for (size_t i = 0; i < groups.size(); ++i) {
 			try {
-				ret = elliptics_node_->remove_data_range(io, groups[i], cflags);
+				ret = sess.remove_data_range(io, groups[i], cflags);
 				break;
 			} catch (...) {
 				continue;
@@ -913,6 +918,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/get/") - 1, std::string::npos);
 
+	ioremap::elliptics::session sess(*elliptics_node_);
 	std::vector<int> groups;
 	if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 		try {
@@ -945,7 +951,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 	}
 
 	try {
-		elliptics_node_->add_groups(groups);
+		sess.add_groups(groups);
 
 		unsigned int cflags = request->hasArg("cflags") ? boost::lexical_cast<unsigned int>(request->getArg("cflags")) : 0;
 		unsigned int ioflags = request->hasArg("ioflags") ? boost::lexical_cast<unsigned int>(request->getArg("ioflags")) : 0;
@@ -962,14 +968,14 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			dnet_parse_numeric_id(request->getArg("id"), id);
 			id.type = column;
 			if (latest)
-				result = elliptics_node_->read_latest(id, offset, size, cflags, ioflags);
+				result = sess.read_latest(id, offset, size, cflags, ioflags);
 			else
-				result = elliptics_node_->read_data_wait(id, offset, size, cflags, ioflags);
+				result = sess.read_data_wait(id, offset, size, cflags, ioflags);
 		} else {
 			if (latest)
-				result = elliptics_node_->read_latest(filename, offset, size, cflags, ioflags, column);
+				result = sess.read_latest(filename, offset, size, cflags, ioflags, column);
 			else
-				result = elliptics_node_->read_data_wait(filename, offset, size, cflags, ioflags, column);
+				result = sess.read_data_wait(filename, offset, size, cflags, ioflags, column);
 		}
 
 		uint64_t ts = 0;
@@ -1028,8 +1034,6 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			result = result.substr(offset, std::string::npos);
 		}
 
-		elliptics_node_->add_groups(groups_);
-
 		char ts_str[128];
 		time_t timestamp = (time_t)(ts);
 		struct tm tmp;
@@ -1072,7 +1076,8 @@ EllipticsProxy::statLogHandler(fastcgi::Request *request) {
 
 	result += "<data>\n";
 
-	std::string ret = elliptics_node_->stat_log();
+	ioremap::elliptics::session sess(*elliptics_node_);
+	std::string ret = sess.stat_log();
 
 	float la[3];
 	const void *data = ret.data();
@@ -1157,7 +1162,8 @@ EllipticsProxy::dnet_parse_numeric_id(const std::string &value, struct dnet_id &
 
 void
 EllipticsProxy::uploadHandler(fastcgi::Request *request) {
-	if (elliptics_node_->state_num() < state_num_) {
+	ioremap::elliptics::session sess(*elliptics_node_);
+	if (sess.state_num() < state_num_) {
 		request->setStatus(403);
 		return;
 	}
@@ -1198,7 +1204,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		if (request->hasArg("id")) {
 			dnet_parse_numeric_id(request->getArg("id"), id);
 		} else {
-			elliptics_node_->transform(filename, id);
+			sess.transform(filename, id);
 		}
 
 		std::vector<int> meta_groups = getMetabaseGroups(request, replication_count, id);
@@ -1231,7 +1237,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	gettimeofday(&start, NULL);
 
 	try {
-		elliptics_node_->add_groups(groups);
+		sess.add_groups(groups);
 
 		bool chunked = false;
 		boost::uint64_t chunk_offset = 0;
@@ -1296,22 +1302,22 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		try {
 			if (request->hasArg("id")) {
 				dnet_parse_numeric_id(request->getArg("id"), id);
-				lookup = elliptics_node_->write_data_wait(id, content, offset, cflags, ioflags);
+				lookup = sess.write_data_wait(id, content, offset, cflags, ioflags);
 			} else {
-				elliptics_node_->transform(filename, id);
+				sess.transform(filename, id);
 
 				if (request->hasArg("prepare")) {
 					uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
-					lookup = elliptics_node_->write_prepare(filename, content, offset, total_size_to_reserve, cflags, ioflags, column);
+					lookup = sess.write_prepare(filename, content, offset, total_size_to_reserve, cflags, ioflags, column);
 				} else if (request->hasArg("commit")) {
-					lookup = elliptics_node_->write_commit(filename, content, offset, 0, cflags, ioflags, column);
+					lookup = sess.write_commit(filename, content, offset, 0, cflags, ioflags, column);
 				} else if (request->hasArg("plain_write")) {
-					lookup = elliptics_node_->write_plain(filename, content, offset, cflags, ioflags, column);
+					lookup = sess.write_plain(filename, content, offset, cflags, ioflags, column);
 				} else {
 					if (chunk_offset) {
-						lookup = elliptics_node_->write_prepare(filename, content, offset, total_size, cflags, ioflags, column);
+						lookup = sess.write_prepare(filename, content, offset, total_size, cflags, ioflags, column);
 					} else {
-						lookup = elliptics_node_->write_data_wait(filename, content, offset, cflags, ioflags, column);
+						lookup = sess.write_data_wait(filename, content, offset, cflags, ioflags, column);
 					}
 				}
 			}
@@ -1338,7 +1344,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		char id_str[2 * DNET_ID_SIZE + 1];
 		char crc_str[2 * DNET_ID_SIZE + 1];
 
-		elliptics_node_->transform(content, row);
+		sess.transform(content, row);
 		dnet_dump_id_len_raw(id.id, DNET_ID_SIZE, id_str);
 		dnet_dump_id_len_raw(row.id, DNET_ID_SIZE, crc_str);
 
@@ -1428,12 +1434,12 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 				try {
 					log()->debug("writing to group %d", *it);
 					try_group[0] = *it;
-					elliptics_node_->add_groups(try_group);
+					sess.add_groups(try_group);
 
 					if (chunked) {
-						lookup = elliptics_node_->write_plain(filename, content, offset, cflags, ioflags, column);
+						lookup = sess.write_plain(filename, content, offset, cflags, ioflags, column);
 					} else {
-						lookup = elliptics_node_->write_data_wait(filename, content, offset, cflags, ioflags, column);
+						lookup = sess.write_data_wait(filename, content, offset, cflags, ioflags, column);
 					}
 				
 					temp_groups.erase(it);
@@ -1446,7 +1452,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		try {
 			if (chunked) {
-				elliptics_node_->add_groups(upload_group);
+				sess.add_groups(upload_group);
 				write_offset = offset + content.size();
 				content.clear();
 				log()->debug("chunk_offset: %llu, chunk: %x", chunk_offset, chunk.first);
@@ -1460,7 +1466,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 						content.assign(chunk.first + chunk_offset, size);
 						chunk_offset += size;
 
-						lookup = elliptics_node_->write_plain(filename, content, write_offset, cflags, ioflags, column);
+						lookup = sess.write_plain(filename, content, write_offset, cflags, ioflags, column);
 						write_offset += size;
 						content.clear();
 					}
@@ -1477,8 +1483,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		log()->debug("written: %d", written);
 		if (replication_count != 0 && written < replication_count) {
 			try {
-				elliptics_node_->add_groups(groups_);
-				elliptics_node_->remove(filename);
+				sess.add_groups(groups_);
+				sess.remove(filename);
 				request->setStatus(410);
 			}
 			catch (...) {
@@ -1500,9 +1506,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		log()->debug("request %s writing metadata", request->getScriptName().c_str());
 
-		/* only update metadata in groups which successfully stored data */
-		elliptics_node_->add_groups(success_upload_group);
 		elliptics_node_->write_metadata(id, filename, upload_group, ts, 0);
+		sess.add_groups(success_upload_group);
+		sess.write_metadata(id, filename, upload_group, ts, 0);
 
 		gettimeofday(&stop, NULL);
 
@@ -1513,6 +1519,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 			uploadMetaInfo(groups, filename);
 		}
 
+
+		sess.add_groups(groups_);
 
 		ostr << "<written>" << written << "</written>\n</post>";
 
@@ -1561,7 +1569,8 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::deleteHandler(fastcgi::Request *request) {
-	if (elliptics_node_->state_num() < state_num_) {
+	ioremap::elliptics::session sess(*elliptics_node_);
+	if (sess.state_num() < state_num_) {
 		request->setStatus(403);
 		return;
 	}
@@ -1583,7 +1592,7 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 	}
 
 	try {
-		elliptics_node_->add_groups(groups);
+		sess.add_groups(groups);
 		if (request->hasArg("id")) {
 			int error = -1;
 			struct dnet_id id;
@@ -1594,7 +1603,7 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 			for (size_t i = 0; i < groups.size(); ++i) {
 				id.group_id = groups[i];
 				try {
-					elliptics_node_->remove(id);
+					sess.remove(id);
 					error = 0;
 				} catch (const std::exception &e) {
 					log()->error("can not delete file %s in group %d: %s", filename.c_str(), groups[i], e.what());
@@ -1607,9 +1616,8 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 				throw std::runtime_error(str.str());
 			}
 		} else {
-			elliptics_node_->remove(filename);
+			sess.remove(filename);
 		}
-		elliptics_node_->add_groups(groups_);
 		request->setStatus(200);
 	}
 	catch (const std::exception &e) {
@@ -1624,6 +1632,8 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::bulkReadHandler(fastcgi::Request *request) {
+
+	ioremap::elliptics::session sess(*elliptics_node_);
 
 	typedef boost::char_separator<char> Separator;
 	typedef boost::tokenizer<Separator> Tokenizer;
@@ -1645,6 +1655,8 @@ EllipticsProxy::bulkReadHandler(fastcgi::Request *request) {
 			str << "BULK_READ failed: group_id is mandatory and it should be > 0";
 			throw std::runtime_error(str.str());
 		}
+
+		sess.add_groups(groups);
 
 		std::vector<std::string> ret;
 
@@ -1672,8 +1684,7 @@ EllipticsProxy::bulkReadHandler(fastcgi::Request *request) {
 			}
 
 			// Finally, call bulk_read method
-			ret = elliptics_node_->bulk_read(keys, cflags);
-
+			ret = sess.bulk_read(keys, cflags);
 		} else {
 			std::ostringstream str;
 			str << "BULK_READ failed: unsupported key type " << key_type;
@@ -1726,6 +1737,8 @@ struct bulk_file_info {
 void
 EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 
+	ioremap::elliptics::session sess(*elliptics_node_);
+
 	std::vector<int> groups;
 	groups = getGroups(request);
 
@@ -1743,6 +1756,8 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 			str << "BULK_WRITE failed: group_id is mandatory and it should be > 0";
 			throw std::runtime_error(str.str());
 		}
+
+		sess.add_groups(groups);
 
 		std::string lookup;
 		std::ostringstream ostr;
@@ -1802,7 +1817,7 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 
 				struct bulk_file_info file_info;
 
-				elliptics_node_->transform(tmp_buffer.get(), row);
+				sess.transform(tmp_buffer.get(), row);
 				dnet_dump_id_len_raw(io.id, DNET_ID_SIZE, file_info.id);
 				dnet_dump_id_len_raw(row.id, DNET_ID_SIZE, file_info.crc);
 				file_info.size = io.size;
@@ -1811,8 +1826,7 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 				results[id] = file_info;
 			}
 
-			lookup = elliptics_node_->bulk_write(ios, data, cflags);
-
+			lookup = sess.bulk_write(ios, data, cflags);
 		} else {
 			std::ostringstream str;
 			str << "BULK_WRITE failed: unsupported key type " << key_type;
@@ -1894,7 +1908,8 @@ EllipticsProxy::bulkWriteHandler(fastcgi::Request *request) {
 
 void
 EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
-	if (elliptics_node_->state_num() < state_num_) {
+	ioremap::elliptics::session sess(*elliptics_node_);
+	if (sess.state_num() < state_num_) {
 		request->setStatus(403);
 		return;
 	}
@@ -1908,7 +1923,7 @@ EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
 	if (request->hasArg("id")) {
 		dnet_parse_numeric_id(request->getArg("id"), id);
 	} else {
-		elliptics_node_->transform(filename, id);
+		sess.transform(filename, id);
 	}
 
 	std::string script = request->hasArg("script") ? request->getArg("script") : "";
@@ -1920,16 +1935,12 @@ EllipticsProxy::execScriptHandler(fastcgi::Request *request) {
 	try {
 		log()->debug("script is <%s>", script.c_str());
 
-		elliptics_node_->add_groups(groups);
+		sess.add_groups(groups);
 
 		std::string content;
 		request->requestBody().toString(content);
 
-
-		ret = elliptics_node_->exec_locked(&id, script, content, std::string());
-
-		elliptics_node_->add_groups(groups_);
-
+		ret = sess.exec_locked(&id, script, content, std::string());
 	}
 	catch (const std::exception &e) {
 		log()->error("can not execute script %s %s", script.c_str(), e.what());

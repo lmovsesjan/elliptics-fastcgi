@@ -1,5 +1,5 @@
 Name:		elliptics-fastcgi
-Version:	1.2.14
+Version:	1.2.15
 Release:	1%{?dist}
 Summary:	Daemon
 
