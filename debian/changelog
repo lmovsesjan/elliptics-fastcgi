@@ -1,8 +1,21 @@
-elliptics-fastcgi (1.2-15) unstable; urgency=low
+elliptics-fastcgi (1.2-2.19-1) unstable; urgency=low
+
+  * Merged 1.2-16 changes (elliptics 2.19 compatibility changes) with old
+    bugfixes
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Fri, 16 Nov 2012 23:02:33 +0400
+
+elliptics-fastcgi (1.2-16) unstable; urgency=low
 
   * compatibility with elliptics 2.19
 
  -- Anton Kortunov <toshik@yandex-team.ru>  Mon, 29 Oct 2012 21:03:50 +0400
+
+elliptics-fastcgi (1.2-15) unstable; urgency=low
+
+  * Depend on elliptics 2.18
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Fri, 14 Sep 2012 14:41:33 +0400
 
 elliptics-fastcgi (1.2-14) unstable; urgency=low
 
