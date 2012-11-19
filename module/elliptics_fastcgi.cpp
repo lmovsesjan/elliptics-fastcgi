@@ -1506,7 +1506,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		log()->debug("request %s writing metadata", request->getScriptName().c_str());
 
-		sess->write_metadata(id, filename, upload_group, ts, 0);
 		sess.add_groups(success_upload_group);
 		sess.write_metadata(id, filename, upload_group, ts, 0);
 
