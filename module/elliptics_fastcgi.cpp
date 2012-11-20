@@ -1506,7 +1506,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 
 		log()->debug("request %s writing metadata", request->getScriptName().c_str());
 
-		elliptics_node_->write_metadata(id, filename, upload_group, ts, 0);
 		sess.add_groups(success_upload_group);
 		sess.write_metadata(id, filename, upload_group, ts, 0);
 
@@ -1518,9 +1517,6 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		if (!metabase_write_addr_.empty() && !metabase_read_addr_.empty()) {
 			uploadMetaInfo(groups, filename);
 		}
-
-
-		sess.add_groups(groups_);
 
 		ostr << "<written>" << written << "</written>\n</post>";
 
