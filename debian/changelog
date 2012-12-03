@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.3-3-ell2.19) unstable; urgency=low
+
+  * Update elliptics deps
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 03 Dec 2012 22:44:45 +0400
+
 elliptics-fastcgi (1.3-2-ell2.19) unstable; urgency=low
 
   * Rebuild proxy to match cpp binding update

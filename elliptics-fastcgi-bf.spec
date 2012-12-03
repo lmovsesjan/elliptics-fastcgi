@@ -1,5 +1,5 @@
 Name:		elliptics-fastcgi
-Version:	1.3-2-ell2.19
+Version:	1.3-3-ell2.19
 Release:	1%{?dist}
 Summary:	Daemon
 
@@ -47,6 +47,9 @@ rm -rf $RPM_BUILD_ROOT
 
 
 %changelog
+* Mon Dec 03 2012 Evgeniy Polyakov <zbr@ioremap.net> - 1.3-3-ell2.19
+- Update elliptics deps
+
 * Mon Dec 03 2012 Evgeniy Polyakov <zbr@ioremap.net> - 1.3-2-ell2.19
 - Rebuild proxy to match cpp binding update
 
