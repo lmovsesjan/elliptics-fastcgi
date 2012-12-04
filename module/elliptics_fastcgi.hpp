@@ -136,7 +136,7 @@ private:
 	int                                         metabase_usage_;
 	uint64_t                                    metabase_current_stamp_;
 #endif /* HAVE_METABASE */
-	boost::shared_ptr<ioremap::elliptics::log_file>  elliptics_log_;
+	boost::shared_ptr<ioremap::elliptics::file_logger>  elliptics_log_;
 	boost::shared_ptr<ioremap::elliptics::node>      elliptics_node_;
 	std::map<std::string, std::string>          typemap_;
 	std::vector<std::string>                    remotes_;
