@@ -11,7 +11,7 @@ if HAVE_REGIONAL
 elliptics_fastcgi_la_LDFLAGS += $(libdir)/fastcgi2/elliptics-regional-module.la
 endif
 
-AM_CXXFLAGS = -W -Wall -g -O2 -fPIC
+AM_CXXFLAGS = -W -Wall -g -O2 -fPIC -std=c++0x
 AM_CPPFLAGS = -I @top_srcdir@/config/ @BOOST_CPPFLAGS@ @FASTCGIDAEMON_CFLAGS@ @ELLIPTICS_CFLAGS@
 AM_LDFLAGS  = @BOOST_THREAD_LDFLAGS@
 

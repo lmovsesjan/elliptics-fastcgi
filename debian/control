@@ -4,8 +4,8 @@ Priority: extra
 Maintainer: Leonid A. Movsesjan <lmovsesjan@yandex-team.ru>
 Build-Depends: debhelper (>= 5),
  libfastcgi-daemon2-dev,
- elliptics-dev (>= 2.20),
- elliptics-client (>= 2.20),
+ elliptics-dev (>= 2.21),
+ elliptics-client (>= 2.21),
  libgeobase3-dev,
  elliptics-regional-module (>= 1.1),
  pkg-config,
