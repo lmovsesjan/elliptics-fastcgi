@@ -965,6 +965,7 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 		int latest = request->hasArg("latest") ? boost::lexical_cast<int>(request->getArg("latest")) : 0;
 
 		sess.set_cflags(cflags);
+		sess.set_ioflags(ioflags);
 
 		std::string result;
 
@@ -974,14 +975,14 @@ EllipticsProxy::getHandler(fastcgi::Request *request) {
 			dnet_parse_numeric_id(request->getArg("id"), id);
 			id.type = column;
 			if (latest)
-				result = sess.read_latest(id, offset, size, ioflags);
+				result = sess.read_latest(id, offset, size);
 			else
-				result = sess.read_data_wait(id, offset, size, ioflags);
+				result = sess.read_data_wait(id, offset, size);
 		} else {
 			if (latest)
-				result = sess.read_latest(filename, offset, size, ioflags, column);
+				result = sess.read_latest(ioremap::elliptics::key(filename, column), offset, size);
 			else
-				result = sess.read_data_wait(filename, offset, size, ioflags, column);
+				result = sess.read_data_wait(ioremap::elliptics::key(filename, column), offset, size);
 		}
 
 		uint64_t ts = 0;
@@ -1188,6 +1189,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 	uint64_t offset = request->hasArg("offset") ? boost::lexical_cast<uint64_t>(request->getArg("offset")) : 0;
 
 	sess.set_cflags(cflags);
+	sess.set_ioflags(ioflags);
 
 	std::string filename = request->hasArg("name") ? request->getArg("name") :
 		request->getScriptName().substr(sizeof ("/upload/") - 1, std::string::npos);
@@ -1310,22 +1312,22 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 		try {
 			if (request->hasArg("id")) {
 				dnet_parse_numeric_id(request->getArg("id"), id);
-				lookup = sess.write_data_wait(id, content, offset, ioflags);
+				lookup = sess.write_data_wait(id, content, offset);
 			} else {
 				sess.transform(filename, id);
 
 				if (request->hasArg("prepare")) {
 					uint64_t total_size_to_reserve = boost::lexical_cast<uint64_t>(request->getArg("prepare"));
-					lookup = sess.write_prepare(filename, content, offset, total_size_to_reserve, ioflags, column);
+					lookup = sess.write_prepare(ioremap::elliptics::key(filename, column), content, offset, total_size_to_reserve);
 				} else if (request->hasArg("commit")) {
-					lookup = sess.write_commit(filename, content, offset, 0, ioflags, column);
+					lookup = sess.write_commit(ioremap::elliptics::key(filename, column), content, offset, 0);
 				} else if (request->hasArg("plain_write")) {
-					lookup = sess.write_plain(filename, content, offset, ioflags, column);
+					lookup = sess.write_plain(ioremap::elliptics::key(filename, column), content, offset);
 				} else {
 					if (chunk_offset) {
-						lookup = sess.write_prepare(filename, content, offset, total_size, ioflags, column);
+						lookup = sess.write_prepare(ioremap::elliptics::key(filename, column), content, offset, total_size);
 					} else {
-						lookup = sess.write_data_wait(filename, content, offset, ioflags, column);
+						lookup = sess.write_data_wait(ioremap::elliptics::key(filename, column), content, offset);
 					}
 				}
 			}
@@ -1445,9 +1447,9 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 					sess.set_groups(try_group);
 
 					if (chunked) {
-						lookup = sess.write_plain(filename, content, offset, ioflags, column);
+						lookup = sess.write_plain(ioremap::elliptics::key(filename, column), content, offset);
 					} else {
-						lookup = sess.write_data_wait(filename, content, offset, ioflags, column);
+						lookup = sess.write_data_wait(ioremap::elliptics::key(filename, column), content, offset);
 					}
 				
 					temp_groups.erase(it);
@@ -1474,7 +1476,7 @@ EllipticsProxy::uploadHandler(fastcgi::Request *request) {
 						content.assign(chunk.first + chunk_offset, size);
 						chunk_offset += size;
 
-						lookup = sess.write_plain(filename, content, write_offset, ioflags, column);
+						lookup = sess.write_plain(ioremap::elliptics::key(filename, column), content, write_offset);
 						write_offset += size;
 						content.clear();
 					}
