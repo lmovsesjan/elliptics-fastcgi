@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.4-1-ell2.20) unstable; urgency=low
+
+  * Ported to elliptics 2.20
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 10 Dec 2012 21:10:52 +0400
+
 elliptics-fastcgi (1.3-3-ell2.19) unstable; urgency=low
 
   * Update elliptics deps
