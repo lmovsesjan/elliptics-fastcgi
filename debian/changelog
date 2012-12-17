@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.4-2-ell2.20) unstable; urgency=low
+
+  * Return 402 when trying to delete nonexisting key
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Mon, 17 Dec 2012 16:46:35 +0400
+
 elliptics-fastcgi (1.4-1-ell2.20) unstable; urgency=low
 
   * Ported to elliptics 2.20

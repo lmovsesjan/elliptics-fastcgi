@@ -1629,6 +1629,10 @@ EllipticsProxy::deleteHandler(fastcgi::Request *request) {
 		}
 		request->setStatus(200);
 	}
+	catch (const ioremap::elliptics::not_found_error &e) {
+		log()->error("Can not delete file %s: file doesn't exist: %s", filename.c_str(), e.what());
+		request->setStatus(402);
+	}
 	catch (const std::exception &e) {
 		log()->error("can not delete file %s %s", filename.c_str(), e.what());
 		request->setStatus(503);
