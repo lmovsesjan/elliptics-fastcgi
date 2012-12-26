@@ -112,11 +112,13 @@ EllipticsProxy::secret(fastcgi::Request *request) const {
 	if (request->hasCookie(cookie_name_)) {
 		std::string cookie = request->getCookie(cookie_name_);
 
-		Separator sep(".");
-		Tokenizer tok(cookie, sep);
+		if (!cookie.empty()) {
+			Separator sep(".");
+			Tokenizer tok(cookie, sep);
 
-		if (paramsNum(tok) == 2) {
-			return std::make_pair(request->getCookie(cookie_name_), time(NULL));
+			if (paramsNum(tok) == 2) {
+				return std::make_pair(request->getCookie(cookie_name_), time(NULL));
+			}
 		}
 	}
 

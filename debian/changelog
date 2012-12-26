@@ -1,3 +1,9 @@
+elliptics-fastcgi (1.4-3-ell2.20) unstable; urgency=low
+
+  * Do not crash if cookie is empty
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Wed, 26 Dec 2012 21:57:03 +0400
+
 elliptics-fastcgi (1.4-2-ell2.20) unstable; urgency=low
 
   * Return 402 when trying to delete nonexisting key
