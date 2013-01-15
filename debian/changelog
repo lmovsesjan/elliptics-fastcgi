@@ -1,3 +1,33 @@
+elliptics-fastcgi (1.4-3-ell2.20) unstable; urgency=low
+
+  * Do not crash if cookie is empty
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Wed, 26 Dec 2012 21:57:03 +0400
+
+elliptics-fastcgi (1.4-2-ell2.20) unstable; urgency=low
+
+  * Return 402 when trying to delete nonexisting key
+
+ -- Anton Kortunov <toshik@yandex-team.ru>  Mon, 17 Dec 2012 16:46:35 +0400
+
+elliptics-fastcgi (1.4-1-ell2.20) unstable; urgency=low
+
+  * Ported to elliptics 2.20
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 10 Dec 2012 21:10:52 +0400
+
+elliptics-fastcgi (1.3-3-ell2.19) unstable; urgency=low
+
+  * Update elliptics deps
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 03 Dec 2012 22:44:45 +0400
+
+elliptics-fastcgi (1.3-2-ell2.19) unstable; urgency=low
+
+  * Rebuild proxy to match cpp binding update
+
+ -- Evgeniy Polyakov <zbr@ioremap.net>  Mon, 03 Dec 2012 22:33:32 +0400
+
 elliptics-fastcgi (1.3-1-ell2.19) unstable; urgency=low
 
   * New version style
